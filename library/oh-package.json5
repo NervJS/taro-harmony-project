@@ -1,9 +1,12 @@
 {
-  "name": "library",
-  "version": "1.0.0",
+  "name": "@taro-oh/library",
+  "version": "4.1.0-alpha.0",
   "description": "Please describe the basic information.",
   "main": "Index.ets",
-  "author": "",
+  "types": "./src/main/ets/npm/@tarojs/taro/index.d.ts",
+  "author": "Taro Team",
   "license": "Apache-2.0",
-  "dependencies": {}
+  "dependencies": {
+    "libTaroHarmonyLibrary.so": "file:./src/main/cpp/types/taro-native-node"
+  }
 }

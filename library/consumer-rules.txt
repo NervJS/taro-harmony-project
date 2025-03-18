@@ -1,0 +1,16 @@
+-keep-property-name
+
+toLocation
+
+designRatio
+densityDPI
+densityPixels
+deviceWidth
+deviceHeight
+viewportWidth
+viewportHeight
+safeArea
+scaledDensity
+orientation
+content
+selectorList
