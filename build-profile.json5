@@ -16,6 +16,7 @@
       {
         "name": "release",
         "buildOption": {
+          "nativeCompiler": "BiSheng",
           "nativeLib": {
             "debugSymbol": {
               "strip": true,
