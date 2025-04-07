@@ -6,13 +6,7 @@
         "name": "default",
         "signingConfig": "default",
         "compatibleSdkVersion": "5.0.2(14)",
-        "runtimeOS": "HarmonyOS",
-        "buildOption": {
-          "strictMode": {
-            "caseSensitiveCheck": true,
-            "useNormalizedOHMUrl": true
-          }
-        }
+        "runtimeOS": "HarmonyOS"
       }
     ],
     "buildModeSet": [
@@ -20,7 +14,15 @@
         "name": "debug",
       },
       {
-        "name": "release"
+        "name": "release",
+        "buildOption": {
+          "nativeLib": {
+            "debugSymbol": {
+              "strip": true,
+              "exclude": []
+            }
+          }
+        }
       }
     ]
   },
