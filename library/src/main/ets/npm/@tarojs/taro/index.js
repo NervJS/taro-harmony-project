@@ -1,32 +1,33 @@
-import '@ohos.abilityAccessCtrl';
-import { eventCenter, Current, systemContext, TaroWindowUtil, systemPromise, document, window, hooks, getCurrentInstance, getPageScrollerOrNode, Events, History, nextTick } from '../runtime';
+import { Current, eventCenter, systemContext, TaroWindowUtil, systemPromise, eventSource, window, hooks, getCurrentInstance, document as document$1, getPageScrollerOrNode, Events, History, nextTick } from '../runtime';
 export { Current, Events, History, eventCenter, getCurrentInstance, nextTick } from '../runtime';
 import { isFunction, isString, isArray, isObject, isNull, isNumber, isUndefined, PLATFORM_TYPE } from '../shared';
+import '@ohos.abilityAccessCtrl';
 import _display from '@ohos.display';
 import ConfigurationConstant from '@ohos.app.ability.ConfigurationConstant';
 import deviceInfo from '@ohos.deviceInfo';
 import i18n from '@ohos.i18n';
 import errorManager from '@ohos.app.ability.errorManager';
 import sensor from '@ohos.sensor';
-import inputMethodEngine from '@ohos.inputMethodEngine';
-import connection from '@ohos.net.connection';
 import batteryInfo, { BatteryChargeState } from '@ohos.batteryInfo';
 import pasteboard from '@ohos.pasteboard';
+import inputMethodEngine from '@ohos.inputMethodEngine';
+import connection from '@ohos.net.connection';
 import call from '@ohos.telephony.call';
 import brightness from '@system.brightness';
 import vibrator from '@ohos.vibrator';
-import photoAccessHelper from '@ohos.file.photoAccessHelper';
-import fs from '@ohos.file.fs';
-import image from '@ohos.multimedia.image';
-import webSocket from '@ohos.net.webSocket';
-import matrix4 from '@ohos.matrix4';
-import document$1 from '@ohos.document';
+import document from '@ohos.document';
 import fileio from '@ohos.fileio';
 import zlib from '@ohos.zlib';
 import app from '@system.app';
 import file from '@system.file';
+import geoLocationManager from '@ohos.geoLocationManager';
+import photoAccessHelper from '@ohos.file.photoAccessHelper';
+import fs from '@ohos.file.fs';
+import image from '@ohos.multimedia.image';
+import webSocket from '@ohos.net.webSocket';
 import bundleManager from '@ohos.bundle.bundleManager';
 import distributedKVStore from '@ohos.data.distributedKVStore';
+import matrix4 from '@ohos.matrix4';
 
 class MethodHandler {
     constructor({ name, success, fail, complete }) {
@@ -100,6 +101,87 @@ class CallbackManager {
             });
         };
     }
+}
+
+const ETS_METHODS_TRIGGER_EVENTNAME = '__taroPluginEtsMethodsTrigger';
+
+const defaultDesignWidth = 750;
+const defaultDesignRatio = {
+    640: 2.34 / 2,
+    750: 1,
+    828: 1.81 / 2
+};
+const defaultBaseFontSize = 20;
+const defaultUnitPrecision = 5;
+const defaultTargetUnit = 'vp';
+function initPxTransform({ designWidth = defaultDesignWidth, deviceRatio = defaultDesignRatio, baseFontSize = defaultBaseFontSize, unitPrecision = defaultUnitPrecision, targetUnit = defaultTargetUnit }) {
+    const taro = Current.taro;
+    if (taro) {
+        taro.config ||= {};
+        const config = taro.config;
+        config.designWidth = designWidth;
+        config.deviceRatio = deviceRatio;
+        config.baseFontSize = baseFontSize;
+        config.targetUnit = targetUnit;
+        config.unitPrecision = unitPrecision;
+    }
+}
+const display = _display.getDefaultDisplaySync();
+let displayWidth = display.width;
+let ratioCache = false;
+let designWidthFunc;
+let designWidth = defaultDesignWidth;
+function getRatio(value, customDesignWidth) {
+    // Note: 提前调用 display 可能无法获取正确值
+    if (ratioCache === false || displayWidth !== display.width || typeof customDesignWidth !== 'undefined') {
+        const config = Current.taro?.config || {};
+        if (!isFunction(designWidthFunc)) {
+            designWidthFunc = isFunction(config.designWidth)
+                ? config.designWidth
+                : () => config.designWidth;
+            designWidth = designWidthFunc(value) || defaultDesignWidth;
+        }
+        displayWidth = display.width;
+        // 如果大于1500，视为折叠屏，取一半作为基准值
+        displayWidth = displayWidth > 1500 ? displayWidth / 2 : displayWidth;
+        ratioCache = displayWidth / (customDesignWidth || designWidth);
+    }
+    return ratioCache;
+}
+// Note: 设置为 style 单位时会自动完成设计稿转换，设计开发者调用 API 时也许抹平差异，例如 pageScrollTo[option.offsetTop]
+function pxTransformHelper(size, unit, isNumber = false) {
+    const config = Current.taro?.config || {};
+    const targetUnit = unit || config.targetUnit || defaultTargetUnit;
+    if (targetUnit === 'PX') {
+        return px2vp(size * display.scaledDensity) + 'vp';
+    }
+    const ratio = getRatio(size);
+    let val = size * ratio;
+    switch (targetUnit) {
+        case 'vp':
+            // Note: 在应用创建前调用无效
+            val = px2vp(val);
+            break;
+    }
+    return isNumber ? val : val + targetUnit;
+}
+function pxTransform(size, designWidth) {
+    const config = Current.taro?.config || {};
+    const targetUnit = config.targetUnit || defaultTargetUnit;
+    if (typeof designWidth !== 'undefined') {
+        // 允许动态改变
+        const ratio = getRatio(size, designWidth);
+        let val = size * ratio;
+        val = px2vp(val);
+        return val;
+    }
+    const val = size;
+    switch (targetUnit) {
+        case 'vp':
+            return pxTransformHelper(size, 'vp');
+        // NOTE: 鸿蒙环境下 style 会自动完成设计稿转换，无需在方法内二次调整
+    }
+    return val + targetUnit;
 }
 
 function shouldBeObject(target) {
@@ -221,114 +303,40 @@ function permanentlyNotSupport(name = '') {
 }
 /** @deprecated */
 function callCallbackSuccess(res, options) {
-    var _a, _b;
-    (_a = options === null || options === void 0 ? void 0 : options.success) === null || _a === void 0 ? void 0 : _a.call(options, res);
-    (_b = options === null || options === void 0 ? void 0 : options.complete) === null || _b === void 0 ? void 0 : _b.call(options, res);
+    options?.success?.(res);
+    options?.complete?.(res);
 }
 /** @deprecated */
 function callCallbackFail(res, options) {
-    var _a, _b;
-    (_a = options === null || options === void 0 ? void 0 : options.fail) === null || _a === void 0 ? void 0 : _a.call(options, res);
-    (_b = options === null || options === void 0 ? void 0 : options.complete) === null || _b === void 0 ? void 0 : _b.call(options, res);
+    options?.fail?.(res);
+    options?.complete?.(res);
 }
 /** @deprecated */
 function callAsyncSuccess(resolve, res, options) {
-    var _a, _b;
-    (_a = options === null || options === void 0 ? void 0 : options.success) === null || _a === void 0 ? void 0 : _a.call(options, res);
-    (_b = options === null || options === void 0 ? void 0 : options.complete) === null || _b === void 0 ? void 0 : _b.call(options, res);
+    options?.success?.(res);
+    options?.complete?.(res);
     resolve(res);
 }
 /** @deprecated */
 function callAsyncFail(reject, res, options) {
-    var _a, _b;
-    (_a = options === null || options === void 0 ? void 0 : options.fail) === null || _a === void 0 ? void 0 : _a.call(options, res);
-    (_b = options === null || options === void 0 ? void 0 : options.complete) === null || _b === void 0 ? void 0 : _b.call(options, res);
+    options?.fail?.(res);
+    options?.complete?.(res);
     reject(res);
 }
 
-const ETS_METHODS_TRIGGER_EVENTNAME = '__taroPluginEtsMethodsTrigger';
+// 加密
+const getUserCryptoManager = /* @__PURE__ */ temporarilyNotSupport('getUserCryptoManager');
 
-const defaultDesignWidth = 750;
-const defaultDesignRatio = {
-    640: 2.34 / 2,
-    750: 1,
-    828: 1.81 / 2
-};
-const defaultBaseFontSize = 20;
-const defaultUnitPrecision = 5;
-const defaultTargetUnit = 'vp';
-function initPxTransform({ designWidth = defaultDesignWidth, deviceRatio = defaultDesignRatio, baseFontSize = defaultBaseFontSize, unitPrecision = defaultUnitPrecision, targetUnit = defaultTargetUnit }) {
-    const taro = Current.taro;
-    if (taro) {
-        taro.config || (taro.config = {});
-        const config = taro.config;
-        config.designWidth = designWidth;
-        config.deviceRatio = deviceRatio;
-        config.baseFontSize = baseFontSize;
-        config.targetUnit = targetUnit;
-        config.unitPrecision = unitPrecision;
-    }
-}
-const display = _display.getDefaultDisplaySync();
-let displayWidth = display.width;
-let ratioCache = false;
-let designWidthFunc;
-let designWidth = defaultDesignWidth;
-function getRatio(value, customDesignWidth) {
-    var _a;
-    // Note: 提前调用 display 可能无法获取正确值
-    if (ratioCache === false || displayWidth !== display.width || typeof customDesignWidth !== 'undefined') {
-        const config = ((_a = Current.taro) === null || _a === void 0 ? void 0 : _a.config) || {};
-        if (!isFunction(designWidthFunc)) {
-            designWidthFunc = isFunction(config.designWidth)
-                ? config.designWidth
-                : () => config.designWidth;
-            designWidth = designWidthFunc(value) || defaultDesignWidth;
-        }
-        displayWidth = display.width;
-        // 如果大于1500，视为折叠屏，取一半作为基准值
-        displayWidth = displayWidth > 1500 ? displayWidth / 2 : displayWidth;
-        ratioCache = displayWidth / (customDesignWidth || designWidth);
-    }
-    return ratioCache;
-}
-// Note: 设置为 style 单位时会自动完成设计稿转换，设计开发者调用 API 时也许抹平差异，例如 pageScrollTo[option.offsetTop]
-function pxTransformHelper(size, unit, isNumber = false) {
-    var _a;
-    const config = ((_a = Current.taro) === null || _a === void 0 ? void 0 : _a.config) || {};
-    const targetUnit = unit || config.targetUnit || defaultTargetUnit;
-    if (targetUnit === 'PX') {
-        return px2vp(size * display.scaledDensity) + 'vp';
-    }
-    const ratio = getRatio(size);
-    let val = size * ratio;
-    switch (targetUnit) {
-        case 'vp':
-            // Note: 在应用创建前调用无效
-            val = px2vp(val);
-            break;
-    }
-    return isNumber ? val : val + targetUnit;
-}
-function pxTransform(size, designWidth) {
-    var _a;
-    const config = ((_a = Current.taro) === null || _a === void 0 ? void 0 : _a.config) || {};
-    const targetUnit = config.targetUnit || defaultTargetUnit;
-    if (typeof designWidth !== 'undefined') {
-        // 允许动态改变
-        const ratio = getRatio(size, designWidth);
-        let val = size * ratio;
-        val = px2vp(val);
-        return val;
-    }
-    const val = size;
-    switch (targetUnit) {
-        case 'vp':
-            return pxTransformHelper(size, 'vp');
-        // NOTE: 鸿蒙环境下 style 会自动完成设计稿转换，无需在方法内二次调整
-    }
-    return val + targetUnit;
-}
+const setEnableDebug = /* @__PURE__ */ temporarilyNotSupport('setEnableDebug');
+const getRealtimeLogManager = /* @__PURE__ */ temporarilyNotSupport('getRealtimeLogManager');
+const getLogManager = /* @__PURE__ */ temporarilyNotSupport('getLogManager');
+
+// 性能
+const reportPerformance = /* @__PURE__ */ temporarilyNotSupport('reportPerformance');
+const getPerformance = /* @__PURE__ */ temporarilyNotSupport('getPerformance');
+const preloadWebview = /* @__PURE__ */ temporarilyNotSupport('preloadWebview');
+const preloadSkylineView = /* @__PURE__ */ temporarilyNotSupport('preloadSkylineView');
+const preloadAssets = /* @__PURE__ */ temporarilyNotSupport('preloadAssets');
 
 let currentContext;
 Current.contextPromise.then((context) => {
@@ -342,24 +350,23 @@ Current.contextPromise.then((context) => {
 });
 /** 获取窗口信息 */
 const getWindowInfo = () => {
-    var _a, _b;
     // Note: 获取实时信息，systemContext 值获取更新可能会被业务逻辑卡住
     const display = _display.getDefaultDisplaySync();
     const info = {
         /** 设备像素比 */
         pixelRatio: systemContext.densityPixels, // 设备像素比,number
-        screenWidth: px2vp(display === null || display === void 0 ? void 0 : display.width), // 屏幕宽度，单位vp
-        screenHeight: px2vp(display === null || display === void 0 ? void 0 : display.height), // 屏幕高度，单位vp
-        windowWidth: systemContext.windowWidth || px2vp(display === null || display === void 0 ? void 0 : display.width), // 可使用窗口高度，单位px
-        windowHeight: systemContext.windowHeight || px2vp(display === null || display === void 0 ? void 0 : display.height), // 可使用窗口宽度，单位px
+        screenWidth: px2vp(display?.width), // 屏幕宽度，单位vp
+        screenHeight: px2vp(display?.height), // 屏幕高度，单位vp
+        windowWidth: systemContext.windowWidth || px2vp(display?.width), // 可使用窗口高度，单位px
+        windowHeight: systemContext.windowHeight || px2vp(display?.height), // 可使用窗口宽度，单位px
         statusBarHeight: systemContext.statusBarHeight, // 状态栏的高度，单位vp
         safeArea: systemContext.safeArea, // 在竖屏正方向下的安全区域 General.SafeAreaResult 单位为vp
     };
     // Note: Harmony 端特定属性
     info.foldDisplayMode = canIUse('SystemCapability.Window.SessionManager') ? _display.getFoldDisplayMode() : 0; // 折叠屏显示模式
     info.isFoldable = _display.isFoldable();
-    info.widthBreakpoint = (_a = AppStorage.get('widthBreakpoint')) !== null && _a !== void 0 ? _a : 0;
-    info.heightBreakpoint = (_b = AppStorage.get('heightBreakpoint')) !== null && _b !== void 0 ? _b : 0;
+    info.widthBreakpoint = AppStorage.get('widthBreakpoint') ?? 0;
+    info.heightBreakpoint = AppStorage.get('heightBreakpoint') ?? 0;
     return info;
 };
 /** 获取设备设置 */
@@ -410,15 +417,14 @@ const getDeviceInfo = () => {
 };
 /** 获取微信APP基础信息 */
 const getAppBaseInfo = () => {
-    var _a, _b, _c, _d;
     const info = {
         SDKVersion: deviceInfo && deviceInfo.sdkApiVersion, // 客户端基础库版本 string
         enableDebug: Current.isDebug, // 是否已打开调试 boolean
         host: deviceInfo && deviceInfo.buildHost, // 当前运行的宿主环境
-        language: ((_b = (_a = i18n === null || i18n === void 0 ? void 0 : i18n.System) === null || _a === void 0 ? void 0 : _a.getSystemLanguage) === null || _b === void 0 ? void 0 : _b.call(_a)) || ((_c = i18n === null || i18n === void 0 ? void 0 : i18n.getSystemLanguage) === null || _c === void 0 ? void 0 : _c.call(i18n)), // 系统语言
-        version: deviceInfo === null || deviceInfo === void 0 ? void 0 : deviceInfo.displayVersion, // 版本号 string
+        language: i18n?.System?.getSystemLanguage?.() || i18n?.getSystemLanguage?.(), // 系统语言
+        version: deviceInfo?.displayVersion, // 版本号 string
         // Note: 更新配置时才能记录
-        theme: ((_d = AppStorage.get('__TARO_APP_CONFIG')) === null || _d === void 0 ? void 0 : _d.colorMode) === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
+        theme: AppStorage.get('__TARO_APP_CONFIG')?.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK
             ? 'dark'
             : 'light', // 系统当前主题，取值为light或dark 'light' | 'dark'
     };
@@ -443,7 +449,13 @@ const getAppAuthorizeSetting = () => {
 };
 /* 同步版本 */
 const getSystemInfoSync = function () {
-    const res = Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({}, getWindowInfo()), getSystemSetting()), getDeviceInfo()), getAppBaseInfo()), getAppAuthorizeSetting());
+    const res = {
+        ...getWindowInfo(),
+        ...getSystemSetting(),
+        ...getDeviceInfo(),
+        ...getAppBaseInfo(),
+        ...getAppAuthorizeSetting(),
+    };
     res.fontSizeSetting = null; // 用户字体大小（单位px） number
     return res;
 };
@@ -473,20 +485,6 @@ const getSystemInfo = function (options = {}) {
         });
     });
 };
-
-// 加密
-const getUserCryptoManager = /* @__PURE__ */ temporarilyNotSupport('getUserCryptoManager');
-
-const setEnableDebug = /* @__PURE__ */ temporarilyNotSupport('setEnableDebug');
-const getRealtimeLogManager = /* @__PURE__ */ temporarilyNotSupport('getRealtimeLogManager');
-const getLogManager = /* @__PURE__ */ temporarilyNotSupport('getLogManager');
-
-// 性能
-const reportPerformance = /* @__PURE__ */ temporarilyNotSupport('reportPerformance');
-const getPerformance = /* @__PURE__ */ temporarilyNotSupport('getPerformance');
-const preloadWebview = /* @__PURE__ */ temporarilyNotSupport('preloadWebview');
-const preloadSkylineView = /* @__PURE__ */ temporarilyNotSupport('preloadSkylineView');
-const preloadAssets = /* @__PURE__ */ temporarilyNotSupport('preloadAssets');
 
 // 更新
 const updateWeChatApp = /* @__PURE__ */ temporarilyNotSupport('updateWeChatApp');
@@ -572,50 +570,24 @@ const base64ToArrayBuffer = /* @__PURE__ */ temporarilyNotSupport('base64ToArray
 /** 创建离屏 canvas 实例 */
 const createOffscreenCanvas = /* @__PURE__ */ temporarilyNotSupport('createOffscreenCanvas');
 /** 创建 canvas 的绘图上下文 CanvasContext 对象 */
+// export const createCanvasContext = /* @__PURE__ */ temporarilyNotSupport('createOffscreenCanvas')
 const createCanvasContext = (canvasId) => {
-    // FIXME 直接根据 canvasId 获取 canvas 实例
-    const canvas = document.querySelector(`canvas[canvasId=${canvasId}]`);
-    if (canvas) {
-        return canvas.getContext('2d');
-    }
-    else {
-        console.error(`createCanvasContext: canvasId ${canvasId} not found`);
-    }
+    const dom = eventSource.get(`canvasId-${canvasId}`);
+    // return dom as TaroCanvasElement
+    if (dom)
+        return dom.context;
 };
 /** 把当前画布指定区域的内容导出生成指定大小的图片 */
-const canvasToTempFilePath = ({ canvasId, fileType, quality, success, fail, complete, x, y, width, height, destWidth, destHeight }, component) => {
-    const handle = new MethodHandler({ name: 'canvasToTempFilePath', success, fail, complete });
-    const canvas = component || document.querySelector(`canvas[canvasId=${canvasId}]`);
-    if (canvas) {
-        try {
-            const dataURL = canvas === null || canvas === void 0 ? void 0 : canvas.exportDataUrl({
-                fileType: 'image/' + (fileType === 'jpg' ? 'jpeg' : fileType) || 'png',
-                quality,
-                x,
-                y,
-                width,
-                height,
-                destWidth,
-                destHeight
-            });
-            return handle.success({
-                tempFilePath: dataURL
-            });
-        }
-        catch (e) {
-            return handle.fail({
-                errMsg: e.message
-            });
-        }
-    }
-    return handle.fail({
-        errMsg: `canvasToTempFilePath: canvasId ${canvasId} not found`
-    });
-};
+const canvasToTempFilePath = /* @__PURE__ */ temporarilyNotSupport('createOffscreenCanvas');
 /** 将像素数据绘制到画布 */
 const canvasPutImageData = /* @__PURE__ */ temporarilyNotSupport('createOffscreenCanvas');
 /** 获取 canvas 区域隐含的像素数据 */
 const canvasGetImageData = /* @__PURE__ */ temporarilyNotSupport('createOffscreenCanvas');
+
+const reportMonitor = /* @__PURE__ */ temporarilyNotSupport('reportMonitor');
+const reportAnalytics = /* @__PURE__ */ temporarilyNotSupport('reportAnalytics');
+const reportEvent = /* @__PURE__ */ temporarilyNotSupport('reportEvent');
+const getExptInfoSync = /* @__PURE__ */ temporarilyNotSupport('getExptInfoSync');
 
 const callbackManager$2 = new CallbackManager();
 let devicemotionListener$1;
@@ -659,9 +631,9 @@ const startAccelerometer = ({ interval = 'normal', success, fail, complete } = {
         if (devicemotionListener$1) ;
         sensor.on(sensor.SensorType.SENSOR_TYPE_ID_ACCELEROMETER, (data) => {
             callbackManager$2.trigger({
-                x: (data === null || data === void 0 ? void 0 : data.x) / GRAVITY_CONSTANT || 0,
-                y: (data === null || data === void 0 ? void 0 : data.y) / GRAVITY_CONSTANT || 0,
-                z: (data === null || data === void 0 ? void 0 : data.z) / GRAVITY_CONSTANT || 0
+                x: data?.x / GRAVITY_CONSTANT || 0,
+                y: data?.y / GRAVITY_CONSTANT || 0,
+                z: data?.z / GRAVITY_CONSTANT || 0
             });
         }, {
             interval: intervalObj.interval,
@@ -684,6 +656,165 @@ const onAccelerometerChange = callback => {
 const offAccelerometerChange = callback => {
     callbackManager$2.remove(callback);
 };
+
+// 无障碍
+const checkIsOpenAccessibility = /* @__PURE__ */ temporarilyNotSupport('checkIsOpenAccessibility');
+
+// 电量
+const getBatteryInfoSync = () => ({
+    // @ts-ignore
+    isCharging: [BatteryChargeState.ENABLE, BatteryChargeState.FULL].includes(batteryInfo.chargingStatus),
+    level: batteryInfo.batterySOC
+});
+const getBatteryInfo = async ({ success, fail, complete } = {}) => {
+    const handle = new MethodHandler({ name: 'getBatteryInfo', success, fail, complete });
+    try {
+        return handle.success(getBatteryInfoSync());
+    }
+    catch (error) {
+        return handle.fail({
+            errMsg: error?.message || error
+        });
+    }
+};
+
+// 蓝牙-通用
+const stopBluetoothDevicesDiscovery = /* @__PURE__ */ temporarilyNotSupport('stopBluetoothDevicesDiscovery');
+const startBluetoothDevicesDiscovery = /* @__PURE__ */ temporarilyNotSupport('startBluetoothDevicesDiscovery');
+const openBluetoothAdapter = /* @__PURE__ */ temporarilyNotSupport('openBluetoothAdapter');
+const onBluetoothDeviceFound = /* @__PURE__ */ temporarilyNotSupport('onBluetoothDeviceFound');
+const onBluetoothAdapterStateChange = /* @__PURE__ */ temporarilyNotSupport('onBluetoothAdapterStateChange');
+const offBluetoothDeviceFound = /* @__PURE__ */ temporarilyNotSupport('offBluetoothDeviceFound');
+const offBluetoothAdapterStateChange = /* @__PURE__ */ temporarilyNotSupport('offBluetoothAdapterStateChange');
+const makeBluetoothPair = /* @__PURE__ */ temporarilyNotSupport('makeBluetoothPair');
+const isBluetoothDevicePaired = /* @__PURE__ */ temporarilyNotSupport('isBluetoothDevicePaired');
+const getConnectedBluetoothDevices = /* @__PURE__ */ temporarilyNotSupport('getConnectedBluetoothDevices');
+const getBluetoothDevices = /* @__PURE__ */ temporarilyNotSupport('getBluetoothDevices');
+const getBluetoothAdapterState = /* @__PURE__ */ temporarilyNotSupport('getBluetoothAdapterState');
+const closeBluetoothAdapter = /* @__PURE__ */ temporarilyNotSupport('closeBluetoothAdapter');
+
+// 蓝牙-低功耗中心设备
+const writeBLECharacteristicValue = /* @__PURE__ */ temporarilyNotSupport('writeBLECharacteristicValue');
+const setBLEMTU = /* @__PURE__ */ temporarilyNotSupport('setBLEMTU');
+const readBLECharacteristicValue = /* @__PURE__ */ temporarilyNotSupport('readBLECharacteristicValue');
+const onBLEMTUChange = /* @__PURE__ */ temporarilyNotSupport('onBLEMTUChange');
+const onBLEConnectionStateChange = /* @__PURE__ */ temporarilyNotSupport('onBLEConnectionStateChange');
+const onBLECharacteristicValueChange = /* @__PURE__ */ temporarilyNotSupport('onBLECharacteristicValueChange');
+const offBLEMTUChange = /* @__PURE__ */ temporarilyNotSupport('offBLEMTUChange');
+const offBLEConnectionStateChange = /* @__PURE__ */ temporarilyNotSupport('offBLEConnectionStateChange');
+const offBLECharacteristicValueChange = /* @__PURE__ */ temporarilyNotSupport('offBLECharacteristicValueChange');
+const notifyBLECharacteristicValueChange = /* @__PURE__ */ temporarilyNotSupport('notifyBLECharacteristicValueChange');
+const getBLEMTU = /* @__PURE__ */ temporarilyNotSupport('getBLEMTU');
+const getBLEDeviceServices = /* @__PURE__ */ temporarilyNotSupport('getBLEDeviceServices');
+const getBLEDeviceRSSI = /* @__PURE__ */ temporarilyNotSupport('getBLEDeviceRSSI');
+const getBLEDeviceCharacteristics = /* @__PURE__ */ temporarilyNotSupport('getBLEDeviceCharacteristics');
+const createBLEConnection = /* @__PURE__ */ temporarilyNotSupport('createBLEConnection');
+const closeBLEConnection = /* @__PURE__ */ temporarilyNotSupport('closeBLEConnection');
+
+// 蓝牙-低功耗外围设备
+const onBLEPeripheralConnectionStateChanged = /* @__PURE__ */ temporarilyNotSupport('onBLEPeripheralConnectionStateChanged');
+const offBLEPeripheralConnectionStateChanged = /* @__PURE__ */ temporarilyNotSupport('offBLEPeripheralConnectionStateChanged');
+const createBLEPeripheralServer = /* @__PURE__ */ temporarilyNotSupport('createBLEPeripheralServer');
+
+// 日历
+const addPhoneRepeatCalendar = temporarilyNotSupport('addPhoneRepeatCalendar');
+const addPhoneCalendar = temporarilyNotSupport('addPhoneCalendar');
+
+// 从 API Version 6 开始支持
+/**
+ * 设置系统剪贴板的内容
+ */
+const setClipboardData = function (options) {
+    const { data, success, fail, complete } = options;
+    const handle = new MethodHandler({ name: 'setClipboardData', success, fail, complete });
+    let res = {};
+    if (!isString(data)) {
+        return handle.fail({
+            errMsg: getParameterError({
+                para: 'data',
+                correct: 'String',
+                wrong: data
+            })
+        });
+    }
+    return new Promise((resolve, reject) => {
+        const systemPasteboard = pasteboard.getSystemPasteboard();
+        const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, data);
+        try {
+            systemPasteboard.setDataSync(pasteData);
+            // @ts-ignore
+            const uiContext = Current?.page?.getUIContext?.();
+            if (!uiContext)
+                return;
+            uiContext.getPromptAction().showToast({
+                message: '内容已复制',
+                duration: 1500,
+                bottom: '50%',
+                showMode: 1 // 设置弹窗显示模式，显示在应用之上。
+            });
+            return handle.success({
+                data,
+            }, { resolve, reject });
+        }
+        catch (error) {
+            if (error) {
+                console.error('Failed to set PasteData. Cause: ' + JSON.stringify(error));
+                res = {
+                    errMsg: 'setClipboardData:fail,error: ' + object2String(error),
+                    error: error
+                };
+                callAsyncFail(reject, res, options);
+            }
+        }
+    });
+};
+/**
+ * 获取系统剪贴板的内容
+ */
+const getClipboardData = function (options) {
+    const { success, fail, complete } = options || {};
+    const handle = new MethodHandler({ name: 'getClipboardData', success, fail, complete });
+    return new Promise((resolve, reject) => {
+        const systemPasteboard = pasteboard.getSystemPasteboard();
+        systemPasteboard.getData((error, pasteData) => {
+            if (error) {
+                console.error('Failed to obtain PasteData. Cause: ' + JSON.stringify(error));
+                return handle.fail({
+                    errMsg: object2String(error),
+                }, { resolve, reject });
+            }
+            else {
+                return handle.success({
+                    data: pasteData.getPrimaryText(),
+                }, { resolve, reject });
+            }
+        });
+    });
+};
+
+/**
+ * 停止监听罗盘数据
+ */
+const stopCompass = temporarilyNotSupport('stopCompass');
+/**
+ * 开始监听罗盘数据
+ */
+const startCompass = temporarilyNotSupport('startCompass');
+/**
+ * 监听罗盘数据变化事件。频率：5 次/秒，接口调用后会自动开始监听，可使用 wx.stopCompass 停止监听。
+ */
+const onCompassChange = temporarilyNotSupport('onCompassChange');
+/**
+ * 取消监听罗盘数据变化事件，参数为空，则取消所有的事件监听。
+ */
+const offCompassChange = temporarilyNotSupport('offCompassChange');
+
+// 联系人
+const chooseContact = /* @__PURE__ */ temporarilyNotSupport('chooseContact');
+const addPhoneContact = /* @__PURE__ */ temporarilyNotSupport('addPhoneContact');
+
+// 加密
+const getRandomValues = /* @__PURE__ */ temporarilyNotSupport('getRandomValues');
 
 const callbackManager$1 = new CallbackManager();
 let devicemotionListener;
@@ -726,9 +857,9 @@ const startGyroscope = ({ interval = 'normal', success, fail, complete } = {}) =
         if (devicemotionListener) ;
         sensor.on(sensor.SensorType.SENSOR_TYPE_ID_GYROSCOPE, (data) => {
             callbackManager$1.trigger({
-                x: (data === null || data === void 0 ? void 0 : data.x) || 0,
-                y: (data === null || data === void 0 ? void 0 : data.y) || 0,
-                z: (data === null || data === void 0 ? void 0 : data.z) || 0
+                x: data?.x || 0,
+                y: data?.y || 0,
+                z: data?.z || 0
             });
         }, {
             interval: intervalObj.interval,
@@ -752,6 +883,15 @@ const offGyroscopeChange = callback => {
     callbackManager$1.remove(callback);
 };
 
+// 蓝牙-信标(Beacon)
+const stopBeaconDiscovery = /* @__PURE__ */ temporarilyNotSupport('stopBeaconDiscovery');
+const startBeaconDiscovery = /* @__PURE__ */ temporarilyNotSupport('startBeaconDiscovery');
+const onBeaconUpdate = /* @__PURE__ */ temporarilyNotSupport('onBeaconUpdate');
+const onBeaconServiceChange = /* @__PURE__ */ temporarilyNotSupport('onBeaconServiceChange');
+const offBeaconUpdate = /* @__PURE__ */ temporarilyNotSupport('offBeaconUpdate');
+const offBeaconServiceChange = /* @__PURE__ */ temporarilyNotSupport('offBeaconServiceChange');
+const getBeacons = /* @__PURE__ */ temporarilyNotSupport('getBeacons');
+
 const callbackManager = new CallbackManager();
 const resizeListener = (height) => {
     callbackManager.trigger({
@@ -759,18 +899,24 @@ const resizeListener = (height) => {
     });
 };
 let topWindow;
-Current.contextPromise.then(context => {
-    const win = window.__ohos.getLastWindow(context);
-    win.then(mainWindow => {
-        topWindow = mainWindow;
-        topWindow.on('keyboardHeightChange', resizeListener);
-    });
-});
 const onKeyboardHeightChange = callback => {
     callbackManager.add(callback);
+    if (callbackManager.count() === 1) {
+        Current.contextPromise
+            .then(context => {
+            const win = window.__ohos.getLastWindow(context);
+            win.then(mainWindow => {
+                topWindow = mainWindow;
+                topWindow.on('keyboardHeightChange', resizeListener);
+            });
+        });
+    }
 };
 const offKeyboardHeightChange = callback => {
     callbackManager.remove(callback);
+    if (callbackManager.count() === 0) {
+        topWindow?.off('keyboardHeightChange', resizeListener);
+    }
 };
 // @ts-ignore
 let keyboardController;
@@ -783,7 +929,7 @@ const hideKeyboard = function (options) {
     const { success, fail, complete } = options || {};
     const handle = new MethodHandler({ name: 'hideKeyboard', success, fail, complete });
     return new Promise((resolve, reject) => {
-        keyboardController === null || keyboardController === void 0 ? void 0 : keyboardController.hide((err) => {
+        keyboardController?.hide((err) => {
             if (err) {
                 return handle.fail({
                     errMsg: err,
@@ -794,6 +940,20 @@ const hideKeyboard = function (options) {
     });
 };
 const getSelectedTextRange = /* @__PURE__ */ temporarilyNotSupport('getSelectedTextRange');
+
+const onMemoryWarning = (listener) => {
+    hooks.tap('getMemoryLevel', (res) => {
+        listener(res);
+    });
+};
+const offMemoryWarning = (listener) => {
+    hooks.off('getMemoryLevel', listener);
+};
+
+const stopDeviceMotionListening = temporarilyNotSupport('stopDeviceMotionListening');
+const startDeviceMotionListening = temporarilyNotSupport('startDeviceMotionListening');
+const onDeviceMotionChange = temporarilyNotSupport('onDeviceMotionChange');
+const offDeviceMotionChange = temporarilyNotSupport('offDeviceMotionChange');
 
 const netCon = connection.createNetConnection();
 function getNetworkValue() {
@@ -900,221 +1060,6 @@ const offNetworkStatusChange = callback => {
     }
 };
 const getLocalIPAddress = /* @__PURE__ */ temporarilyNotSupport('getLocalIPAddress');
-
-// 无障碍
-const checkIsOpenAccessibility = /* @__PURE__ */ temporarilyNotSupport('checkIsOpenAccessibility');
-
-/******************************************************************************
-Copyright (c) Microsoft Corporation.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-***************************************************************************** */
-/* global Reflect, Promise, SuppressedError, Symbol */
-
-
-function __awaiter$1(thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-}
-
-typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
-    var e = new Error(message);
-    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
-};
-
-// 电量
-const getBatteryInfoSync = () => ({
-    // @ts-ignore
-    isCharging: [BatteryChargeState.ENABLE, BatteryChargeState.FULL].includes(batteryInfo.chargingStatus),
-    level: batteryInfo.batterySOC
-});
-const getBatteryInfo = (...args_1) => __awaiter$1(void 0, [...args_1], void 0, function* ({ success, fail, complete } = {}) {
-    const handle = new MethodHandler({ name: 'getBatteryInfo', success, fail, complete });
-    try {
-        return handle.success(getBatteryInfoSync());
-    }
-    catch (error) {
-        return handle.fail({
-            errMsg: (error === null || error === void 0 ? void 0 : error.message) || error
-        });
-    }
-});
-
-// 蓝牙-通用
-const stopBluetoothDevicesDiscovery = /* @__PURE__ */ temporarilyNotSupport('stopBluetoothDevicesDiscovery');
-const startBluetoothDevicesDiscovery = /* @__PURE__ */ temporarilyNotSupport('startBluetoothDevicesDiscovery');
-const openBluetoothAdapter = /* @__PURE__ */ temporarilyNotSupport('openBluetoothAdapter');
-const onBluetoothDeviceFound = /* @__PURE__ */ temporarilyNotSupport('onBluetoothDeviceFound');
-const onBluetoothAdapterStateChange = /* @__PURE__ */ temporarilyNotSupport('onBluetoothAdapterStateChange');
-const offBluetoothDeviceFound = /* @__PURE__ */ temporarilyNotSupport('offBluetoothDeviceFound');
-const offBluetoothAdapterStateChange = /* @__PURE__ */ temporarilyNotSupport('offBluetoothAdapterStateChange');
-const makeBluetoothPair = /* @__PURE__ */ temporarilyNotSupport('makeBluetoothPair');
-const isBluetoothDevicePaired = /* @__PURE__ */ temporarilyNotSupport('isBluetoothDevicePaired');
-const getConnectedBluetoothDevices = /* @__PURE__ */ temporarilyNotSupport('getConnectedBluetoothDevices');
-const getBluetoothDevices = /* @__PURE__ */ temporarilyNotSupport('getBluetoothDevices');
-const getBluetoothAdapterState = /* @__PURE__ */ temporarilyNotSupport('getBluetoothAdapterState');
-const closeBluetoothAdapter = /* @__PURE__ */ temporarilyNotSupport('closeBluetoothAdapter');
-
-// 蓝牙-低功耗中心设备
-const writeBLECharacteristicValue = /* @__PURE__ */ temporarilyNotSupport('writeBLECharacteristicValue');
-const setBLEMTU = /* @__PURE__ */ temporarilyNotSupport('setBLEMTU');
-const readBLECharacteristicValue = /* @__PURE__ */ temporarilyNotSupport('readBLECharacteristicValue');
-const onBLEMTUChange = /* @__PURE__ */ temporarilyNotSupport('onBLEMTUChange');
-const onBLEConnectionStateChange = /* @__PURE__ */ temporarilyNotSupport('onBLEConnectionStateChange');
-const onBLECharacteristicValueChange = /* @__PURE__ */ temporarilyNotSupport('onBLECharacteristicValueChange');
-const offBLEMTUChange = /* @__PURE__ */ temporarilyNotSupport('offBLEMTUChange');
-const offBLEConnectionStateChange = /* @__PURE__ */ temporarilyNotSupport('offBLEConnectionStateChange');
-const offBLECharacteristicValueChange = /* @__PURE__ */ temporarilyNotSupport('offBLECharacteristicValueChange');
-const notifyBLECharacteristicValueChange = /* @__PURE__ */ temporarilyNotSupport('notifyBLECharacteristicValueChange');
-const getBLEMTU = /* @__PURE__ */ temporarilyNotSupport('getBLEMTU');
-const getBLEDeviceServices = /* @__PURE__ */ temporarilyNotSupport('getBLEDeviceServices');
-const getBLEDeviceRSSI = /* @__PURE__ */ temporarilyNotSupport('getBLEDeviceRSSI');
-const getBLEDeviceCharacteristics = /* @__PURE__ */ temporarilyNotSupport('getBLEDeviceCharacteristics');
-const createBLEConnection = /* @__PURE__ */ temporarilyNotSupport('createBLEConnection');
-const closeBLEConnection = /* @__PURE__ */ temporarilyNotSupport('closeBLEConnection');
-
-// 蓝牙-低功耗外围设备
-const onBLEPeripheralConnectionStateChanged = /* @__PURE__ */ temporarilyNotSupport('onBLEPeripheralConnectionStateChanged');
-const offBLEPeripheralConnectionStateChanged = /* @__PURE__ */ temporarilyNotSupport('offBLEPeripheralConnectionStateChanged');
-const createBLEPeripheralServer = /* @__PURE__ */ temporarilyNotSupport('createBLEPeripheralServer');
-
-// 日历
-const addPhoneRepeatCalendar = temporarilyNotSupport('addPhoneRepeatCalendar');
-const addPhoneCalendar = temporarilyNotSupport('addPhoneCalendar');
-
-// 从 API Version 6 开始支持
-/**
- * 设置系统剪贴板的内容
- */
-const setClipboardData = function (options) {
-    const { data, success, fail, complete } = options;
-    const handle = new MethodHandler({ name: 'setClipboardData', success, fail, complete });
-    let res = {};
-    if (!isString(data)) {
-        return handle.fail({
-            errMsg: getParameterError({
-                para: 'data',
-                correct: 'String',
-                wrong: data
-            })
-        });
-    }
-    return new Promise((resolve, reject) => {
-        var _a, _b;
-        const systemPasteboard = pasteboard.getSystemPasteboard();
-        const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, data);
-        try {
-            systemPasteboard.setDataSync(pasteData);
-            // @ts-ignore
-            const uiContext = (_b = (_a = Current === null || Current === void 0 ? void 0 : Current.page) === null || _a === void 0 ? void 0 : _a.getUIContext) === null || _b === void 0 ? void 0 : _b.call(_a);
-            if (!uiContext)
-                return;
-            uiContext.getPromptAction().showToast({
-                message: '内容已复制',
-                duration: 1500,
-                bottom: '50%',
-                showMode: 1 // 设置弹窗显示模式，显示在应用之上。
-            });
-            return handle.success({
-                data,
-            }, { resolve, reject });
-        }
-        catch (error) {
-            if (error) {
-                console.error('Failed to set PasteData. Cause: ' + JSON.stringify(error));
-                res = {
-                    errMsg: 'setClipboardData:fail,error: ' + object2String(error),
-                    error: error
-                };
-                callAsyncFail(reject, res, options);
-            }
-        }
-    });
-};
-/**
- * 获取系统剪贴板的内容
- */
-const getClipboardData = function (options) {
-    const { success, fail, complete } = options || {};
-    const handle = new MethodHandler({ name: 'getClipboardData', success, fail, complete });
-    return new Promise((resolve, reject) => {
-        const systemPasteboard = pasteboard.getSystemPasteboard();
-        systemPasteboard.getData((error, pasteData) => {
-            if (error) {
-                console.error('Failed to obtain PasteData. Cause: ' + JSON.stringify(error));
-                return handle.fail({
-                    errMsg: object2String(error),
-                }, { resolve, reject });
-            }
-            else {
-                return handle.success({
-                    data: pasteData.getPrimaryText(),
-                }, { resolve, reject });
-            }
-        });
-    });
-};
-
-/**
- * 停止监听罗盘数据
- */
-const stopCompass = temporarilyNotSupport('stopCompass');
-/**
- * 开始监听罗盘数据
- */
-const startCompass = temporarilyNotSupport('startCompass');
-/**
- * 监听罗盘数据变化事件。频率：5 次/秒，接口调用后会自动开始监听，可使用 wx.stopCompass 停止监听。
- */
-const onCompassChange = temporarilyNotSupport('onCompassChange');
-/**
- * 取消监听罗盘数据变化事件，参数为空，则取消所有的事件监听。
- */
-const offCompassChange = temporarilyNotSupport('offCompassChange');
-
-// 联系人
-const chooseContact = /* @__PURE__ */ temporarilyNotSupport('chooseContact');
-const addPhoneContact = /* @__PURE__ */ temporarilyNotSupport('addPhoneContact');
-
-// 加密
-const getRandomValues = /* @__PURE__ */ temporarilyNotSupport('getRandomValues');
-
-// 蓝牙-信标(Beacon)
-const stopBeaconDiscovery = /* @__PURE__ */ temporarilyNotSupport('stopBeaconDiscovery');
-const startBeaconDiscovery = /* @__PURE__ */ temporarilyNotSupport('startBeaconDiscovery');
-const onBeaconUpdate = /* @__PURE__ */ temporarilyNotSupport('onBeaconUpdate');
-const onBeaconServiceChange = /* @__PURE__ */ temporarilyNotSupport('onBeaconServiceChange');
-const offBeaconUpdate = /* @__PURE__ */ temporarilyNotSupport('offBeaconUpdate');
-const offBeaconServiceChange = /* @__PURE__ */ temporarilyNotSupport('offBeaconServiceChange');
-const getBeacons = /* @__PURE__ */ temporarilyNotSupport('getBeacons');
-
-const onMemoryWarning = (listener) => {
-    hooks.tap('getMemoryLevel', (res) => {
-        listener(res);
-    });
-};
-const offMemoryWarning = (listener) => {
-    hooks.off('getMemoryLevel', listener);
-};
-
-const stopDeviceMotionListening = temporarilyNotSupport('stopDeviceMotionListening');
-const startDeviceMotionListening = temporarilyNotSupport('startDeviceMotionListening');
-const onDeviceMotionChange = temporarilyNotSupport('onDeviceMotionChange');
-const offDeviceMotionChange = temporarilyNotSupport('offDeviceMotionChange');
 
 // NFC
 const stopHCE = /* @__PURE__ */ temporarilyNotSupport('stopHCE');
@@ -1270,2104 +1215,6 @@ const getWifiList = /* @__PURE__ */ temporarilyNotSupport('getWifiList');
 const getConnectedWifi = /* @__PURE__ */ temporarilyNotSupport('getConnectedWifi');
 const connectWifi = /* @__PURE__ */ temporarilyNotSupport('connectWifi');
 
-const ENV_TYPE = {
-    WEAPP: 'WEAPP',
-    SWAN: 'SWAN',
-    ALIPAY: 'ALIPAY',
-    TT: 'TT',
-    QQ: 'QQ',
-    JD: 'JD',
-    WEB: 'WEB',
-    RN: 'RN',
-    HARMONY: 'HARMONY',
-    QUICKAPP: 'QUICKAPP'
-};
-function getEnv() {
-    return ENV_TYPE.HARMONY;
-}
-// TODO
-const getCurrentPages = () => [];
-const requirePlugin$1 = temporarilyNotSupport('requirePlugin');
-/** 鸿蒙专属 */
-function updatePageSync() {
-    var _a, _b;
-    const node = (_b = (_a = getCurrentInstance()) === null || _a === void 0 ? void 0 : _a.page) === null || _b === void 0 ? void 0 : _b.node;
-    if (!node)
-        return;
-    Current.nativeModule.updatePageSync(node);
-}
-function unstable_SetPageIsTextNeedLayout(isNeed) {
-    var _a, _b;
-    const node = (_b = (_a = getCurrentInstance()) === null || _a === void 0 ? void 0 : _a.page) === null || _b === void 0 ? void 0 : _b.node;
-    if (!node)
-        return;
-    Current.nativeModule.unstable_SetPageIsTextNeedLayout(node, isNeed);
-}
-
-const scope$4 = 'taskpool';
-const type$4 = 'method';
-// TaskPool 专属方法
-const triggerTaskPoolMethods = ({ name = '', args = [], complete, fail, success, } = {}) => {
-    if (!name) {
-        throw new Error('triggerTaskPoolMethods 方法必须传入 name 参数');
-    }
-    const handle = new MethodHandler({ name, success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name,
-            args,
-            scope: scope$4,
-            type: type$4,
-            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
-            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
-        });
-    });
-};
-
-// HarmonyOS 文档链接：https://developer.harmonyos.com/cn/docs/documentation/doc-references/js-apis-media-0000001103383404
-// WX 文档链接：https://developers.weixin.qq.com/miniprogram/dev/api/media/image/wx.previewMedia.html
-// ✅ wx.previewMedia(Object object)
-// ✅ wx.chooseMedia
-// TODO: 扩展支持预览video
-const previewMedia = temporarilyNotSupport('previewMedia');
-const chooseMedia = function (options) {
-    return new Promise((resolve, reject) => {
-        try {
-            validateParams('chooseMedia', [options], ['Object']);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            return callAsyncFail(reject, res, options);
-        }
-        const { count = 9, mediaType = ['image'] } = options;
-        const mediaTypeAdapter = {
-            0b1: photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE,
-            0b10: photoAccessHelper.PhotoViewMIMETypes.VIDEO_TYPE,
-            0b11: photoAccessHelper.PhotoViewMIMETypes.IMAGE_VIDEO_TYPE,
-        };
-        const photoViewPicker = new photoAccessHelper.PhotoViewPicker();
-        const photoSelectOptions = new photoAccessHelper.PhotoSelectOptions();
-        photoSelectOptions.maxSelectNumber = count; // 选择媒体文件的最大数目
-        photoSelectOptions.MIMEType =
-            mediaTypeAdapter[mediaType.reduce((acc, cur) => {
-                switch (cur) {
-                    case 'image':
-                        return acc | 0b1;
-                    case 'video':
-                        return acc | 0b10;
-                    default:
-                        return acc;
-                }
-            }, 0b1)];
-        photoSelectOptions.isOriginalSupported = true;
-        photoViewPicker
-            .select(photoSelectOptions)
-            .then((photoSelectResult) => {
-            const uris = photoSelectResult.photoUris;
-            callAsyncSuccess(resolve, { tempFilePaths: uris });
-        })
-            .catch((error) => {
-            callAsyncFail(reject, error, options);
-        });
-    });
-};
-
-/******************************************************************************
-Copyright (c) Microsoft Corporation.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-***************************************************************************** */
-/* global Reflect, Promise, SuppressedError, Symbol, Iterator */
-
-
-function __awaiter(thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-}
-
-typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
-    var e = new Error(message);
-    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
-};
-
-const scope$3 = 'media';
-const type$3 = 'method';
-const previewImage = function (options) {
-    const name = 'previewImage';
-    const { success, fail, complete } = options;
-    const handle = new MethodHandler({ name, success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name,
-            args: [options],
-            scope: scope$3,
-            type: type$3,
-            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
-            errorHandler: (res = {}) => handle.fail(res, { resolve, reject }),
-        });
-    });
-};
-const getImageInfoSchema = {
-    src: 'String',
-};
-const compressImageSchema = {
-    src: 'String',
-};
-const chooseImageSchema = {
-    count: 'Number',
-};
-const photoSelectOptions = new photoAccessHelper.PhotoSelectOptions();
-const getImageInfo = function (options) {
-    return new Promise((resolve, reject) => {
-        try {
-            validateParams('getImageInfo', options, getImageInfoSchema);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            return callAsyncFail(reject, res, options);
-        }
-        const { src } = options;
-        // FIX: 调试发现在版本api7中 source 为 undefined, 需鸿蒙侧确认
-        const source = image.createImageSource(src);
-        if (isNull(source)) {
-            const createImageSourceError = { errMsg: 'getImageInfo fail: createImageSource has failed.' };
-            callAsyncFail(reject, createImageSourceError, options);
-            return;
-        }
-        source
-            .getImageInfo()
-            .then((value) => {
-            callAsyncSuccess(resolve, value, options);
-        })
-            .catch((error) => {
-            callAsyncFail(reject, error, options);
-        });
-    });
-};
-class CompressedImageInfo {
-    constructor() {
-        this.imageUri = ''; // 压缩后图片保存位置的uri
-        this.imageByteLength = 0; // 压缩后图片字节长度
-    }
-}
-function saveImage(compressedImageData, compressedImageUri) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const tempArr = compressedImageUri.split('/');
-        const name = tempArr[tempArr.length - 1];
-        const context = getContext(Current === null || Current === void 0 ? void 0 : Current.page);
-        const applicationContext = context.getApplicationContext();
-        const tempDir = applicationContext.tempDir;
-        const filePath = `${tempDir}/${name}`;
-        try {
-            const res = fs.accessSync(filePath);
-            if (res) {
-                // 如果图片afterCompressiona.jpeg已存在，则删除
-                fs.unlinkSync(filePath);
-            }
-        }
-        catch (err) {
-            console.error(`[Taro] saveImage Error: AccessSync failed with error message: ${err.message}, error code: ${err.code}`);
-        }
-        // 知识点：保存图片。获取最终图片压缩数据compressedImageData，保存图片。
-        // 压缩图片数据写入文件
-        const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
-        fs.writeSync(file.fd, compressedImageData);
-        fs.closeSync(file);
-        // 获取压缩图片信息
-        const compressedImageInfo = new CompressedImageInfo();
-        compressedImageInfo.imageUri = filePath;
-        compressedImageInfo.imageByteLength = compressedImageData.byteLength;
-        return compressedImageInfo;
-    });
-}
-const compressImage = function (options) {
-    return new Promise((resolve, reject) => {
-        try {
-            validateParams('compressImage', options, compressImageSchema);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            return callAsyncFail(reject, res, options);
-        }
-        const { src, quality = 80, compressedWidth, compressedHeight } = options;
-        const srcAfterCompress = src.includes('_after_compress') ? src : src.split('.').join('_after_compress.');
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name: 'compressImage',
-            args: [src, quality, compressedWidth, compressedHeight],
-            scope: 'taskpool',
-            type: 'method',
-            successHandler(pixelMap) {
-                const packer = image.createImagePacker();
-                if (isNull(packer)) {
-                    const createImagePackerError = { errMsg: 'compressImage fail: createImagePacker has failed.' };
-                    callAsyncFail(reject, createImagePackerError, options);
-                    return;
-                }
-                const isPNG = src.endsWith('.png');
-                const packingOptionsOHOS = {
-                    format: isPNG ? 'image/png' : 'image/jpeg',
-                    quality: quality,
-                };
-                packer
-                    .packing(pixelMap, packingOptionsOHOS)
-                    .then((value) => {
-                    saveImage(value, srcAfterCompress).then((result) => {
-                        callAsyncSuccess(resolve, { tempFilePath: result.imageUri }, options);
-                    });
-                })
-                    .catch((error) => {
-                    callAsyncFail(reject, error, options);
-                });
-            },
-            errorHandler(res) {
-                callAsyncFail(reject, res, options);
-            },
-        });
-    });
-};
-const chooseImage = function (options) {
-    return new Promise((resolve, reject) => {
-        try {
-            validateParams('chooseImage', options, chooseImageSchema);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            return callAsyncFail(reject, res, options);
-        }
-        const { count = 9 } = options;
-        const photoViewPicker = new photoAccessHelper.PhotoViewPicker();
-        let sizeType = options.sizeType;
-        if (!sizeType || !sizeType.length) {
-            sizeType = ['compressed', 'original'];
-        }
-        photoSelectOptions.maxSelectNumber = count; // 选择媒体文件的最大数目
-        photoSelectOptions.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE; // 过滤选择媒体文件类型为IMAGE
-        photoSelectOptions.isOriginalSupported = true; // 支持选择原图
-        photoViewPicker
-            .select(photoSelectOptions)
-            .then((photoSelectResult) => {
-            const result = {};
-            const isOrigin = photoSelectResult.isOriginalPhoto;
-            if (isOrigin) {
-                const getSizeAction = photoSelectResult.photoUris.map((uri) => {
-                    return new Promise((resolve, reject) => {
-                        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-                            name: 'getImageSize',
-                            args: [uri],
-                            scope: 'taskpool',
-                            type: 'method',
-                            successHandler({ data }) {
-                                resolve({
-                                    size: data,
-                                    path: uri,
-                                });
-                            },
-                            errorHandler(res) {
-                                reject(res);
-                            },
-                        });
-                    });
-                });
-                Promise.all(getSizeAction).then((tempFiles) => {
-                    result.tempFiles = tempFiles;
-                    result.tempFilePaths = tempFiles.map((item) => item.path);
-                    callAsyncSuccess(resolve, result, options);
-                });
-            }
-            else {
-                const actions = photoSelectResult.photoUris.map((uri) => {
-                    return new Promise((resolve, reject) => {
-                        compressImage({
-                            src: uri,
-                            compressedWidth: getSystemInfoSync().screenWidth / 2,
-                            compressedHeight: getSystemInfoSync().screenHeight / 2,
-                            success: (compressResult) => {
-                                resolve(compressResult.tempFilePath);
-                            },
-                            fail: (err) => {
-                                reject(err);
-                            }
-                        });
-                    });
-                });
-                const sizeAction = actions.map((p) => {
-                    return new Promise((resolve, reject) => {
-                        p.then((uri) => {
-                            eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-                                name: 'getImageSize',
-                                args: [uri],
-                                scope: 'taskpool',
-                                type: 'method',
-                                successHandler({ data }) {
-                                    resolve({
-                                        size: data,
-                                        path: uri,
-                                    });
-                                },
-                                errorHandler(res) {
-                                    reject(res);
-                                },
-                            });
-                        }).catch((e) => {
-                            reject(e);
-                        });
-                    });
-                });
-                Promise.all(sizeAction)
-                    .then((tempFiles) => {
-                    result.tempFilePaths = tempFiles.map((item) => item.path);
-                    result.tempFiles = tempFiles;
-                    callAsyncSuccess(resolve, result, options);
-                })
-                    .catch((error) => {
-                    const res = { errMsg: error };
-                    return callAsyncFail(reject, res, options);
-                });
-            }
-        })
-            .catch((error) => {
-            callAsyncFail(reject, error, options);
-        });
-    });
-};
-const saveImageToPhotosAlbum = temporarilyNotSupport('saveImageToPhotosAlbum');
-
-class VideoContext {
-    constructor(id) {
-        this.requestBackgroundPlayback = temporarilyNotSupport('VideoContext.requestBackgroundPlayback');
-        this.exitBackgroundPlayback = temporarilyNotSupport('VideoContext.exitBackgroundPlayback');
-        this.exitPictureInPicture = temporarilyNotSupport('VideoContext.exitPictureInPicture');
-        this.hideStatusBar = temporarilyNotSupport('VideoContext.hideStatusBar');
-        this.playbackRate = temporarilyNotSupport('VideoContext.playbackRate');
-        this.sendDanmu = temporarilyNotSupport('VideoContext.sendDanmu');
-        this.showStatusBar = temporarilyNotSupport('VideoContext.showStatusBar');
-        this.id = id;
-        this.video = document.getElementById(id);
-        if (this.video) {
-            this.controller = this.video.controller;
-        }
-    }
-    play() {
-        if (!this.controller)
-            return;
-        this.controller.play();
-    }
-    pause() {
-        if (!this.controller)
-            return;
-        this.controller.pause();
-    }
-    stop() {
-        if (!this.controller)
-            return;
-        this.controller.stop();
-    }
-    seek(position) {
-        if (!this.controller)
-            return;
-        this.controller.setCurrentTime(position);
-    }
-    requestFullScreen() {
-        if (!this.controller)
-            return;
-        this.controller.requestFullscreen(true);
-    }
-    exitFullScreen() {
-        if (!this.controller)
-            return;
-        this.controller.exitFullscreen();
-    }
-}
-
-const createVideoContext = (id, _) => {
-    return new VideoContext(id);
-};
-// TODO: 1.返回属性补全
-// TODO: 2.只支持从相册选择，补充摄像头拍摄功能，需要HarmonyOS提供选择组件
-const chooseVideo = function (options = {}) {
-    return new Promise((resolve, reject) => {
-        try {
-            validateParams('chooseVideo', [options], ['Object']);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            return callAsyncFail(reject, res, options);
-        }
-        const photoViewPicker = new photoAccessHelper.PhotoViewPicker();
-        const photoSelectOptions = new photoAccessHelper.PhotoSelectOptions();
-        photoSelectOptions.maxSelectNumber = 9; // 选择媒体文件的最大数目
-        photoSelectOptions.MIMEType = photoAccessHelper.PhotoViewMIMETypes.VIDEO_TYPE; // 过滤选择媒体文件类型为IMAGE
-        photoSelectOptions.isOriginalSupported = true; // 支持选择原图
-        photoViewPicker
-            .select(photoSelectOptions)
-            .then((photoSelectResult) => {
-            const uris = photoSelectResult.photoUris;
-            callAsyncSuccess(resolve, { tempFilePaths: uris });
-        })
-            .catch((error) => {
-            callAsyncFail(reject, error, options);
-        });
-    });
-};
-const compressVideo = /* @__PURE__ */ temporarilyNotSupport('compressVideo');
-const getVideoInfo = /* @__PURE__ */ temporarilyNotSupport('getVideoInfo');
-const openVideoEditor = /* @__PURE__ */ temporarilyNotSupport('openVideoEditor');
-const saveVideoToPhotosAlbum = temporarilyNotSupport('saveVideoToPhotosAlbum');
-
-// 音频
-const stopVoice = /* @__PURE__ */ temporarilyNotSupport('stopVoice');
-const setInnerAudioOption = /* @__PURE__ */ temporarilyNotSupport('setInnerAudioOption');
-const playVoice = /* @__PURE__ */ temporarilyNotSupport('playVoice');
-const pauseVoice = /* @__PURE__ */ temporarilyNotSupport('pauseVoice');
-const getAvailableAudioSources = /* @__PURE__ */ temporarilyNotSupport('getAvailableAudioSources');
-const createWebAudioContext = /* @__PURE__ */ temporarilyNotSupport('createWebAudioContext');
-const createMediaAudioPlayer = /* @__PURE__ */ temporarilyNotSupport('createMediaAudioPlayer');
-/**
- * 创建内部 audio 上下文 InnerAudioContext 对象。
- */
-const createInnerAudioContext = /* @__PURE__ */ temporarilyNotSupport('createInnerAudioContext');
-const createAudioContext = /* @__PURE__ */ temporarilyNotSupport('createAudioContext');
-
-// 背景音频
-const stopBackgroundAudio = /* @__PURE__ */ temporarilyNotSupport('stopBackgroundAudio');
-const seekBackgroundAudio = /* @__PURE__ */ temporarilyNotSupport('seekBackgroundAudio');
-const playBackgroundAudio = /* @__PURE__ */ temporarilyNotSupport('playBackgroundAudio');
-const pauseBackgroundAudio = /* @__PURE__ */ temporarilyNotSupport('pauseBackgroundAudio');
-const onBackgroundAudioStop = /* @__PURE__ */ temporarilyNotSupport('onBackgroundAudioStop');
-const onBackgroundAudioPlay = /* @__PURE__ */ temporarilyNotSupport('onBackgroundAudioPlay');
-const onBackgroundAudioPause = /* @__PURE__ */ temporarilyNotSupport('onBackgroundAudioPause');
-const getBackgroundAudioPlayerState = /* @__PURE__ */ temporarilyNotSupport('getBackgroundAudioPlayerState');
-/**
- * 获取全局唯一的背景音频管理器
- */
-const getBackgroundAudioManager = /* @__PURE__ */ temporarilyNotSupport('getBackgroundAudioManager');
-
-// 相机
-class CameraContext {
-    constructor() {
-        this.onCameraFrame = temporarilyNotSupport('CameraContext.onCameraFrame');
-        this.setZoom = temporarilyNotSupport('CameraContext.setZoom');
-        this.startRecord = temporarilyNotSupport('CameraContext.startRecord');
-        this.stopRecord = temporarilyNotSupport('CameraContext.stopRecord');
-        this.takePhoto = temporarilyNotSupport('CameraContext.takePhoto');
-    }
-}
-const createCameraContext = (_) => {
-    return new CameraContext();
-};
-
-// 实时音视频
-const createLivePusherContext = /* @__PURE__ */ temporarilyNotSupport('createLivePusherContext');
-const createLivePlayerContext = /* @__PURE__ */ temporarilyNotSupport('createLivePlayerContext');
-
-// 地图
-const createMapContext = /* @__PURE__ */ temporarilyNotSupport('createMapContext');
-
-// 画面录制器
-const createMediaRecorder = /* @__PURE__ */ temporarilyNotSupport('createMediaRecorder');
-
-// 录音
-const stopRecord = /* @__PURE__ */ temporarilyNotSupport('stopRecord');
-const startRecord = /* @__PURE__ */ temporarilyNotSupport('startRecord');
-const getRecorderManager = /* @__PURE__ */ temporarilyNotSupport('getRecorderManager');
-
-// 视频解码器
-const createVideoDecoder = /* @__PURE__ */ temporarilyNotSupport('createVideoDecoder');
-
-// 音视频合成
-const createMediaContainer = /* @__PURE__ */ temporarilyNotSupport('createMediaContainer');
-
-// 实时语音
-const updateVoIPChatMuteConfig = /* @__PURE__ */ temporarilyNotSupport('updateVoIPChatMuteConfig');
-const subscribeVoIPVideoMembers = /* @__PURE__ */ temporarilyNotSupport('subscribeVoIPVideoMembers');
-const setEnable1v1Chat = /* @__PURE__ */ temporarilyNotSupport('setEnable1v1Chat');
-const onVoIPVideoMembersChanged = /* @__PURE__ */ temporarilyNotSupport('onVoIPVideoMembersChanged');
-const onVoIPChatStateChanged = /* @__PURE__ */ temporarilyNotSupport('onVoIPChatStateChanged');
-const onVoIPChatSpeakersChanged = /* @__PURE__ */ temporarilyNotSupport('onVoIPChatSpeakersChanged');
-const onVoIPChatMembersChanged = /* @__PURE__ */ temporarilyNotSupport('onVoIPChatMembersChanged');
-const onVoIPChatInterrupted = /* @__PURE__ */ temporarilyNotSupport('onVoIPChatInterrupted');
-const offVoIPChatSpeakersChanged = /* @__PURE__ */ temporarilyNotSupport('offVoIPChatSpeakersChanged');
-const offVoIPVideoMembersChanged = /* @__PURE__ */ temporarilyNotSupport('offVoIPVideoMembersChanged');
-const offVoIPChatStateChanged = /* @__PURE__ */ temporarilyNotSupport('offVoIPChatStateChanged');
-const offVoIPChatMembersChanged = /* @__PURE__ */ temporarilyNotSupport('offVoIPChatMembersChanged');
-const offVoIPChatInterrupted = /* @__PURE__ */ temporarilyNotSupport('offVoIPChatInterrupted');
-const joinVoIPChat = /* @__PURE__ */ temporarilyNotSupport('joinVoIPChat');
-const join1v1Chat = /* @__PURE__ */ temporarilyNotSupport('join1v1Chat');
-const exitVoIPChat = /* @__PURE__ */ temporarilyNotSupport('exitVoIPChat');
-
-const downloadFileSchema = {
-    url: 'String'
-};
-const downloadFile = function (options) {
-    let task;
-    let isComplete = false;
-    let progressHandles = [];
-    const requestTask = new Promise((resolve, reject) => {
-        const { url, header, filePath, success, fail, complete } = options;
-        const handle = new MethodHandler({ name: 'downloadFile', success, fail, complete });
-        try {
-            validateParams('downloadFile', options, downloadFileSchema);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            return handle.fail(res, { resolve, reject });
-        }
-        const params = {
-            url,
-            header,
-            filePath,
-            context: getContext(this),
-            success: (requestData) => {
-                const reswx = {
-                    data: requestData
-                };
-                handle.success(reswx, { resolve, reject });
-            },
-            fail: (data) => {
-                handle.fail(data, { resolve, reject });
-            },
-            complete: () => {
-                isComplete = true;
-            },
-            progress: (loaded, total) => {
-                const progress = loaded / total;
-                progressHandles.forEach(fn => fn({ progress }));
-            }
-        };
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name: 'downloadFile',
-            args: [params],
-            scope: 'network',
-            type: 'method',
-            onInit: (obj) => {
-                task = obj;
-            }
-        });
-    });
-    requestTask.abort = function () {
-        var _a;
-        (_a = task === null || task === void 0 ? void 0 : task.delete) === null || _a === void 0 ? void 0 : _a.call(task);
-    };
-    requestTask.onProgressUpdate = (fn) => {
-        if (isComplete) {
-            fn({ progress: 1 });
-        }
-        else {
-            progressHandles.push(fn);
-        }
-    };
-    requestTask.offProgressUpdate = (fn) => {
-        progressHandles = progressHandles.filter(handle => handle !== fn);
-    };
-    return requestTask;
-};
-
-const METHOD = ['OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE', 'CONNECT'];
-const scope$2 = 'network';
-const type$2 = 'method';
-const requestSchema = {
-    url: 'String',
-};
-const request = (options) => {
-    let task;
-    const requestTask = new Promise((resolve, reject) => {
-        let { method = 'GET' } = options;
-        const { url, header = {}, timeout = 60000, dataType = 'json', data, enableHttpDNS = false, success, fail, complete, } = options;
-        const handle = new MethodHandler({ name: 'request', success, fail, complete });
-        // ** 校验入参 **
-        // -> 0.基建侧建议在 GET 请求时，不要设置 Content-Type，否则可能会导致请求失败
-        const isGetRequest = method.toUpperCase() === 'GET';
-        if (!isGetRequest) {
-            // -> 1.没有 content-type 的加上默认 application/json
-            const keyOfContentType = Object.keys(header).find((item) => item.toLowerCase() === 'content-type');
-            !keyOfContentType && (header['Content-Type'] = 'application/json');
-        }
-        // -> 2. 检查 method 是否正确
-        if (METHOD.includes(method.toUpperCase())) {
-            method = method.toUpperCase();
-        }
-        else {
-            const error = {
-                errMsg: `request fail parameter error: the method value should be one of the ${METHOD.join(',')}`,
-            };
-            handle.fail(error, { resolve, reject });
-        }
-        // -> 3. 校验send的数据类型
-        try {
-            validateParams('send', options, requestSchema);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            handle.fail(res, { resolve, reject });
-        }
-        // ** 校验入参 **
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name: 'request',
-            args: [
-                Object.assign(Object.assign({}, options), { url, method: method.toUpperCase(), header,
-                    timeout,
-                    dataType, data: data, enableSuccessResponse: true, enableHttpDNS, success: (requestData) => {
-                        const reswx = {
-                            data: requestData.data,
-                            statusCode: requestData.status,
-                            headers: requestData.headers,
-                        };
-                        handle.success(reswx, { resolve, reject });
-                    }, fail: (data) => {
-                        handle.fail(data, { resolve, reject });
-                    } }),
-            ],
-            scope: scope$2,
-            type: type$2,
-            onInit: (obj) => {
-                task = obj;
-            },
-        });
-    });
-    requestTask.abort = function () {
-        var _a;
-        (_a = task === null || task === void 0 ? void 0 : task.doCancel) === null || _a === void 0 ? void 0 : _a.call(task);
-    };
-    return requestTask;
-};
-
-const uploadSchema = {
-    url: 'String',
-    // filePath: 'String',
-    // name: 'String'
-};
-const uploadFile = function (options) {
-    let task;
-    let isComplete = false;
-    let progressHandles = [];
-    const requestTask = new Promise((resolve, reject) => {
-        // let timer
-        const { url, filePath, name, formData, header = {}, success, fail, complete } = options;
-        const handle = new MethodHandler({ name: 'uploadFile', success, fail, complete });
-        // -> 1.校验url格式
-        try {
-            validateParams('uploadFile', options, uploadSchema);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            return handle.fail(res, { resolve, reject });
-        }
-        const file = {
-            url: filePath,
-            name
-        };
-        const files = [file];
-        const param = {
-            url,
-            files,
-            method: 'POST',
-            context: getContext(this),
-            header,
-            success: (requestData) => {
-                const reswx = {
-                    data: requestData
-                };
-                handle.success(reswx, { resolve, reject });
-            },
-            fail: (data) => {
-                handle.fail(data, { resolve, reject });
-            },
-            complete: () => {
-                isComplete = true;
-            },
-            progress: (loaded, total) => {
-                const progress = loaded / total;
-                progressHandles.forEach(fn => fn({ progress }));
-            }
-        };
-        if (formData) {
-            const rData = [];
-            Object.keys(formData).forEach((key) => {
-                const rDataEle = {
-                    name: key,
-                    value: formData[key],
-                };
-                rData.push(rDataEle);
-            });
-            param.data = rData;
-        }
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name: 'uploadFile',
-            args: [param],
-            scope: 'network',
-            type: 'method',
-            onInit: (obj) => {
-                task = obj;
-            }
-        });
-    });
-    requestTask.abort = function () {
-        var _a;
-        (_a = task === null || task === void 0 ? void 0 : task.delete) === null || _a === void 0 ? void 0 : _a.call(task);
-    };
-    requestTask.onProgressUpdate = (fn) => {
-        if (isComplete) {
-            fn({ progress: 1 });
-        }
-        else {
-            progressHandles.push(fn);
-        }
-    };
-    requestTask.offProgressUpdate = (fn) => {
-        progressHandles = progressHandles.filter(handle => handle !== fn);
-    };
-    return requestTask;
-};
-
-// mDNS
-const stopLocalServiceDiscovery = /* @__PURE__ */ temporarilyNotSupport('stopLocalServiceDiscovery');
-const startLocalServiceDiscovery = /* @__PURE__ */ temporarilyNotSupport('startLocalServiceDiscovery');
-const onLocalServiceResolveFail = /* @__PURE__ */ temporarilyNotSupport('onLocalServiceResolveFail');
-const onLocalServiceLost = /* @__PURE__ */ temporarilyNotSupport('onLocalServiceLost');
-const onLocalServiceFound = /* @__PURE__ */ temporarilyNotSupport('onLocalServiceFound');
-const onLocalServiceDiscoveryStop = /* @__PURE__ */ temporarilyNotSupport('onLocalServiceDiscoveryStop');
-const offLocalServiceResolveFail = /* @__PURE__ */ temporarilyNotSupport('offLocalServiceResolveFail');
-const offLocalServiceLost = /* @__PURE__ */ temporarilyNotSupport('offLocalServiceLost');
-const offLocalServiceFound = /* @__PURE__ */ temporarilyNotSupport('offLocalServiceFound');
-const offLocalServiceDiscoveryStop = /* @__PURE__ */ temporarilyNotSupport('offLocalServiceDiscoveryStop');
-
-// TCP 通信
-const createTCPSocket = /* @__PURE__ */ temporarilyNotSupport('createTCPSocket');
-
-// UDP 通信
-const createUDPSocket = /* @__PURE__ */ temporarilyNotSupport('createUDPSocket');
-
-// OpenHarmony 不支持全局操作 WebSocket
-// HarmonyOS 文档链接：https://developer.harmonyos.com/cn/docs/documentation/doc-references/js-apis-net-websocket-0000001168304641
-// WX 文档链接：https://developers.weixin.qq.com/miniprogram/dev/api/network/websocket/wx.sendSocketMessage.html
-// ✅ wx.connectSocket
-// ✅ SocketTask
-// ✅ SocketTask.close
-// ✅ SocketTask.onClose
-// ✅ SocketTask.onError
-// ✅ SocketTask.onMessage
-// ✅ SocketTask.onOpen
-// ✅ SocketTask.send
-// ❌ wx.sendSocketMessage
-// ❌ wx.onSocketOpen
-// ❌ wx.onSocketMessage
-// ❌ wx.onSocketError
-// ❌ wx.onSocketClose
-// ❌ wx.closeSocket
-const connectSocketSchema = {
-    url: 'String'
-};
-// const closetSocketSchema = {
-//   code: 'Number',
-//   reason: 'String'
-// }
-const sendSocketSchema = {
-    data: 'String'
-};
-const connectSocket = function (options) {
-    let ws;
-    const SocketTaskWX = new Promise((resolve, reject) => {
-        ws = webSocket.createWebSocket();
-        const { url, header } = options;
-        try {
-            validateParams('uploadFile', options, connectSocketSchema);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            return callAsyncFail(reject, res, options);
-        }
-        ws.connect(url, { header }).then((value) => {
-            callAsyncSuccess(resolve, value, options);
-        }).catch((err) => {
-            callAsyncFail(reject, err, options);
-        });
-    });
-    SocketTaskWX.close = function (closeOptions) {
-        return new Promise((resolve, reject) => {
-            // TODO: 检验非必须参数
-            // try {
-            //   validateParams('close', options, closeSocketSchema)
-            // } catch (error) {
-            //   const res = { errMsg: error.message }
-            //   return callAsyncFail(reject, res, options)
-            // }
-            ws.close(closeOptions).then(value => {
-                callAsyncSuccess(resolve, value, closeOptions);
-            }, error => {
-                callAsyncFail(reject, error, closeOptions);
-            });
-        });
-    };
-    SocketTaskWX.onClose = function (onCloseCallback) {
-        validateParams('onClose', [onCloseCallback], ['Function']);
-        ws.on('close', (err, value) => {
-            onCloseCallback(!err ? value : err);
-        });
-    };
-    SocketTaskWX.onError = function (onErrorCallback) {
-        validateParams('onError', [onErrorCallback], ['Function']);
-        ws.on('error', (err) => {
-            onErrorCallback(err);
-        });
-    };
-    SocketTaskWX.onMessage = function (onMessageCallback) {
-        validateParams('onMessage', [onMessageCallback], ['Function']);
-        ws.on('onMessage', (err, value) => {
-            onMessageCallback(!err ? value : err);
-        });
-    };
-    SocketTaskWX.onOpen = function (onOpenCallback) {
-        validateParams('onOpen', [onOpenCallback], ['Function']);
-        ws.on('open', (err, value) => {
-            // TODO：返回数据字段完全不一样，无法兼容，暂不处理
-            // wx:{header, profile}, ohos:{err, value:{status, message}}
-            onOpenCallback(!err ? value : err);
-        });
-    };
-    SocketTaskWX.send = function (sendOptions) {
-        return new Promise((resolve, reject) => {
-            const { data } = sendOptions;
-            try {
-                validateParams('send', sendOptions, sendSocketSchema);
-            }
-            catch (error) {
-                const res = { errMsg: error.message };
-                return callAsyncFail(reject, res, options);
-            }
-            ws.send(data).then(value => {
-                callAsyncSuccess(resolve, value, sendOptions);
-            }, error => {
-                callAsyncFail(reject, error, sendOptions);
-            });
-        });
-    };
-    return SocketTaskWX;
-};
-
-const scope$1 = 'login';
-const type$1 = 'method';
-const pluginLogin = /* @__PURE__ */ temporarilyNotSupport('pluginLogin');
-const login = (options) => {
-    const name = 'login';
-    const { success, fail, complete } = options || {};
-    const handle = new MethodHandler({ name, success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name,
-            args: [options],
-            scope: scope$1,
-            type: type$1,
-            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
-            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
-        });
-    });
-};
-const logout = () => {
-    const name = 'logout';
-    eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-        name,
-        scope: scope$1,
-        type: type$1,
-    });
-};
-const checkSession = /* @__PURE__ */ temporarilyNotSupport('checkSession');
-
-// 帐号信息
-const getAccountInfoSync = /* @__PURE__ */ temporarilyNotSupport('getAccountInfoSync');
-
-// 收货地址
-const chooseAddress = /* @__PURE__ */ temporarilyNotSupport('chooseAddress');
-
-// 授权
-const authorizeForMiniProgram = /* @__PURE__ */ temporarilyNotSupport('authorizeForMiniProgram');
-const authorize = /* @__PURE__ */ temporarilyNotSupport('authorize');
-
-// 卡券
-const openCard = /* @__PURE__ */ temporarilyNotSupport('openCard');
-const addCard = /* @__PURE__ */ temporarilyNotSupport('addCard');
-
-// 视频号
-const reserveChannelsLive = /* @__PURE__ */ temporarilyNotSupport('reserveChannelsLive');
-const openChannelsUserProfile = /* @__PURE__ */ temporarilyNotSupport('openChannelsUserProfile');
-const openChannelsLive = /* @__PURE__ */ temporarilyNotSupport('openChannelsLive');
-const openChannelsEvent = /* @__PURE__ */ temporarilyNotSupport('openChannelsEvent');
-const openChannelsActivity = /* @__PURE__ */ temporarilyNotSupport('openChannelsActivity');
-const getChannelsShareKey = /* @__PURE__ */ temporarilyNotSupport('getChannelsShareKey');
-const getChannelsLiveNoticeInfo = /* @__PURE__ */ temporarilyNotSupport('getChannelsLiveNoticeInfo');
-const getChannelsLiveInfo = /* @__PURE__ */ temporarilyNotSupport('getChannelsLiveInfo');
-
-// 微信客服
-const openCustomerServiceChat = /* @__PURE__ */ temporarilyNotSupport('openCustomerServiceChat');
-
-// 设备（组）音视频通话
-const requestDeviceVoIP = /* @__PURE__ */ temporarilyNotSupport('requestDeviceVoIP');
-const getDeviceVoIPList = /* @__PURE__ */ temporarilyNotSupport('getDeviceVoIPList');
-
-// 过往接口
-const checkIsSupportFacialRecognition = /* @__PURE__ */ temporarilyNotSupport('checkIsSupportFacialRecognition');
-const startFacialRecognitionVerify = /* @__PURE__ */ temporarilyNotSupport('startFacialRecognitionVerify');
-const startFacialRecognitionVerifyAndUploadVideo = /* @__PURE__ */ temporarilyNotSupport('startFacialRecognitionVerifyAndUploadVideo');
-const faceVerifyForPay = /* @__PURE__ */ temporarilyNotSupport('faceVerifyForPay');
-
-// 收藏
-const addVideoToFavorites = /* @__PURE__ */ temporarilyNotSupport('addVideoToFavorites');
-const addFileToFavorites = /* @__PURE__ */ temporarilyNotSupport('addFileToFavorites');
-
-// 微信群
-const getGroupEnterInfo = /* @__PURE__ */ temporarilyNotSupport('getGroupEnterInfo');
-
-// 发票
-const chooseInvoiceTitle = /* @__PURE__ */ temporarilyNotSupport('chooseInvoiceTitle');
-const chooseInvoice = /* @__PURE__ */ temporarilyNotSupport('chooseInvoice');
-
-// 车牌
-const chooseLicensePlate = /* @__PURE__ */ temporarilyNotSupport('chooseLicensePlate');
-
-// 我的小程序
-const checkIsAddedToMyMiniProgram = /* @__PURE__ */ temporarilyNotSupport('checkIsAddedToMyMiniProgram');
-
-// 隐私信息授权
-const requirePrivacyAuthorize = /* @__PURE__ */ temporarilyNotSupport('requirePrivacyAuthorize');
-const openPrivacyContract = /* @__PURE__ */ temporarilyNotSupport('openPrivacyContract');
-const onNeedPrivacyAuthorization = /* @__PURE__ */ temporarilyNotSupport('onNeedPrivacyAuthorization');
-const getPrivacySetting = /* @__PURE__ */ temporarilyNotSupport('getPrivacySetting');
-
-// 微信红包
-const showRedPackage = /* @__PURE__ */ temporarilyNotSupport('showRedPackage');
-
-// 设置
-const openSetting = /* @__PURE__ */ temporarilyNotSupport('openSetting');
-const getSetting = /* @__PURE__ */ temporarilyNotSupport('getSetting');
-
-// 生物认证
-const startSoterAuthentication = /* @__PURE__ */ temporarilyNotSupport('startSoterAuthentication');
-const checkIsSupportSoterAuthentication = /* @__PURE__ */ temporarilyNotSupport('checkIsSupportSoterAuthentication');
-const checkIsSoterEnrolledInDevice = /* @__PURE__ */ temporarilyNotSupport('checkIsSoterEnrolledInDevice');
-
-// 订阅消息
-const requestSubscribeMessage = /* @__PURE__ */ temporarilyNotSupport('requestSubscribeMessage');
-// 订阅设备消息
-const requestSubscribeDeviceMessage = /* @__PURE__ */ temporarilyNotSupport('requestSubscribeDeviceMessage');
-
-/**
- * 用户相关API， Harmony ACE API 6
- *
- * 1. 华为账号场景介绍文档 @see https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/harmonyos-js-login-0000001151310900
- * 2. 华为账号API参考 @see https://developer.huawei.com/consumer/cn/doc/development/HMSCore-References/harmonyos-js-overview-0000001063532145
- */
-// import hmsJSAccount from '@hmscore/hms-jsb-account'
-/**
- * 通过Scope数组获取已登录的对应帐号信息(依赖login行为)
- * @param options
- */
-const getUserInfo = temporarilyNotSupport('getUserInfo');
-// export function getUserInfo (options) {
-//   const { success, fail, complete } = options
-//   const res: Record<string, any> = {}
-//   // const result = hmsJSAccount.HuaweiIdAuthManager.getAuthResultWithScopes([hmsJSAccount.PROFILE])
-//   const result = null
-//   if (result) {
-//     res.data = { userInfo: generateUserInfo(result) }
-//     isFunction(success) && success(res)
-//   } else {
-//     res.errorMsg = 'getUserInfo result data is null'
-//     isFunction(fail) && fail(res)
-//   }
-//   isFunction(complete) && complete(res)
-// }
-/**
- * 获取用户信息
- */
-const getUserProfile = temporarilyNotSupport('getUserProfile');
-// export const getUserProfile = (_options) => {
-//   return new Promise((resolve, reject) => {
-//     const res: Record<string, any> = {}
-//     hmsJSAccount.HuaweiIdAuthManager.addAuthScopes([hmsJSAccount.PROFILE])
-//       .then(result => {
-//         if (result) {
-//           res.data = { userInfo: generateUserInfo(result) }
-//           callAsyncSuccess(resolve, res, options)
-//         } else {
-//           res.errorMsg = 'getUserProfile result data is null'
-//           callAsyncFail(reject, res, options)
-//         }
-//       })
-//       .catch(error => {
-//         callAsyncFail(reject, error, options)
-//       })
-//   })
-// }
-// function generateUserInfo (hmsAuthInfo) {
-//   const userInfo = {
-//     nickName: String,
-//     avatarUrl: String,
-//     gender: Number,
-//     country: String
-//   }
-//   if (hmsAuthInfo) {
-//     userInfo.nickName = hmsAuthInfo.displayName
-//     userInfo.avatarUrl = hmsAuthInfo.photoUriString
-//     userInfo.gender = hmsAuthInfo.gender
-//     userInfo.country = hmsAuthInfo.country
-//   }
-//   return userInfo
-// }
-
-// 微信运动
-const shareToWeRun = /* @__PURE__ */ temporarilyNotSupport('shareToWeRun');
-const getWeRunData = /* @__PURE__ */ temporarilyNotSupport('getWeRunData');
-
-const scope = 'route';
-const type = 'method';
-const navigateTo = (options) => {
-    const name = 'navigateTo';
-    const { success, fail, complete } = options;
-    const handle = new MethodHandler({ name, success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name,
-            args: [options],
-            scope,
-            type,
-            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
-            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
-        });
-    });
-};
-const redirectTo = (options) => {
-    const name = 'redirectTo';
-    const { success, fail, complete } = options;
-    const handle = new MethodHandler({ name, success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name,
-            args: [options],
-            scope,
-            type,
-            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
-            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
-        });
-    });
-};
-const navigateBack = (options = {}) => {
-    const name = 'navigateBack';
-    const { success, fail, complete } = options;
-    const handle = new MethodHandler({ name, success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name,
-            args: [options],
-            scope,
-            type,
-            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
-            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
-        });
-    });
-};
-const reLaunch = (options) => {
-    const name = 'reLaunch';
-    const { success, fail, complete } = options;
-    const handle = new MethodHandler({ name, success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name,
-            args: [options],
-            scope,
-            type,
-            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
-            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
-        });
-    });
-};
-const switchTab = (options) => {
-    const name = 'switchTab';
-    const { success, fail, complete } = options;
-    const handle = new MethodHandler({ name, success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
-            name,
-            args: [options],
-            scope,
-            type,
-            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
-            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
-        });
-    });
-};
-
-// @ts-ignore
-const resCallback$1 = (res) => {
-    return { errMsg: `${res}:ok` };
-};
-const showToastSchema = {
-    title: 'String',
-    duration: 'Number',
-    bottom: 'String'
-};
-function showToast(options) {
-    return new Promise((resolve, reject) => {
-        var _a, _b;
-        const _default = {
-            title: '',
-            duration: 1500,
-            bottom: '50%'
-        };
-        options = Object.assign(Object.assign({}, _default), options);
-        try {
-            validateParams('showToast', options, showToastSchema);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            return callAsyncFail(reject, res, options);
-        }
-        // @ts-ignore
-        const uiContext = (_b = (_a = Current === null || Current === void 0 ? void 0 : Current.page) === null || _a === void 0 ? void 0 : _a.getUIContext) === null || _b === void 0 ? void 0 : _b.call(_a);
-        if (!uiContext)
-            return;
-        uiContext.getPromptAction().showToast({
-            message: options.title,
-            duration: options.duration,
-            bottom: options.bottom,
-            showMode: 1 // 设置弹窗显示模式，显示在应用之上。
-        });
-        callAsyncSuccess(resolve, resCallback$1('showToast'), options);
-    });
-}
-const showActionSheetSchema = {
-    title: 'String',
-    itemList: 'Array'
-};
-function showActionSheet(options) {
-    return new Promise((resolve, reject) => {
-        var _a, _b;
-        const _default = {
-            title: '',
-            itemList: [],
-            itemColor: '#000000'
-        };
-        options = Object.assign(Object.assign({}, _default), options);
-        try {
-            validateParams('showActionSheet', options, showActionSheetSchema);
-        }
-        catch (error) {
-            const res = { errMsg: error.message };
-            return callAsyncFail(reject, res, options);
-        }
-        const { title, itemList, itemColor } = options;
-        const buttons = itemList.map(res => {
-            return {
-                text: res,
-                color: itemColor
-            };
-        });
-        const actionSheetOptions = {
-            title,
-            buttons
-        };
-        // @ts-ignore
-        const uiContext = (_b = (_a = Current === null || Current === void 0 ? void 0 : Current.page) === null || _a === void 0 ? void 0 : _a.getUIContext) === null || _b === void 0 ? void 0 : _b.call(_a);
-        if (!uiContext)
-            return;
-        uiContext.getPromptAction().showActionMenu(actionSheetOptions, (error, data) => {
-            var _a;
-            if (error) {
-                callAsyncFail(reject, Object.assign(Object.assign({}, data), { errMsg: (_a = data.errMsg) === null || _a === void 0 ? void 0 : _a.replace('showActionMenu', 'showActionSheet') }), options);
-            }
-            callAsyncSuccess(resolve, Object.assign(Object.assign({}, data), resCallback$1('showActionSheet')), options);
-        });
-    });
-}
-const hideToast = /* @__PURE__ */ temporarilyNotSupport('hideToast');
-const showLoading = temporarilyNotSupport('showLoading');
-const hideLoading = temporarilyNotSupport('hideLoading');
-const enableAlertBeforeUnload = /* @__PURE__ */ temporarilyNotSupport('enableAlertBeforeUnload');
-const disableAlertBeforeUnload = /* @__PURE__ */ temporarilyNotSupport('disableAlertBeforeUnload');
-
-const resCallback = (res) => {
-    return { errMsg: `${res}:ok` };
-};
-// 覆盖showModal
-function showModal(options) {
-    const _default = {
-        title: '',
-        content: '',
-        showCancel: true,
-        cancelText: '取消',
-        cancelColor: '#000000',
-        confirmText: '确定',
-        confirmColor: '#3CC51F',
-        backgroundColor: '#ffffff'
-    };
-    options = Object.assign(Object.assign({}, _default), options);
-    const { title, content, cancelText, confirmText, cancelColor, confirmColor, showCancel, backgroundColor } = options;
-    const buttons = [];
-    if (cancelText !== '' && showCancel) {
-        buttons.push({
-            text: cancelText,
-            color: cancelColor
-        });
-    }
-    if (confirmText !== '') {
-        buttons.push({
-            text: confirmText,
-            color: confirmColor
-        });
-    }
-    return new Promise((resolve, reject) => {
-        var _a, _b;
-        const modalOptions = {
-            title,
-            message: content,
-            buttons: buttons,
-            backgroundColor
-        };
-        // @ts-ignore
-        const uiContext = (_b = (_a = Current === null || Current === void 0 ? void 0 : Current.page) === null || _a === void 0 ? void 0 : _a.getUIContext) === null || _b === void 0 ? void 0 : _b.call(_a);
-        if (!uiContext)
-            return;
-        uiContext.getPromptAction().showDialog(modalOptions, (error, data) => {
-            if (error) {
-                const res = { errMsg: error };
-                callAsyncFail(reject, res, options);
-            }
-            if (data.index === 0 && showCancel) {
-                callAsyncSuccess(resolve, Object.assign(Object.assign({}, resCallback('showModal')), { confirm: false, cancel: true }), options);
-            }
-            else {
-                callAsyncSuccess(resolve, Object.assign(Object.assign({}, resCallback('showModal')), { confirm: true, cancel: false, content: null }), options);
-            }
-        });
-    });
-}
-
-const pageScrollTo = (options) => {
-    const { scrollTop, selector = '', duration = 300, offsetTop = 0, success, fail, complete } = options || {};
-    const handle = new MethodHandler({ name: 'pageScrollTo', success, fail, complete });
-    return new Promise((resolve, reject) => {
-        if (scrollTop === undefined && !selector) {
-            return handle.fail({
-                errMsg: 'scrollTop" 或 "selector" 需要其之一'
-            }, { resolve, reject });
-        }
-        if (scrollTop && selector) {
-            console.warn('"scrollTop" 或 "selector" 建议只设一个值, 全部设置会忽略selector');
-        }
-        const taro = Current.taro;
-        const page = taro.getCurrentInstance().page;
-        let scrollTopValue = -1;
-        let scrollLeftValue = -1;
-        let scrollNode = null;
-        const currentPageNode = getPageScrollerOrNode(page === null || page === void 0 ? void 0 : page.node, page);
-        if (scrollTop || typeof scrollTop === 'number') {
-            scrollTopValue = scrollTop;
-        }
-        else if (selector) {
-            const node = document.querySelector(selector);
-            if (!node)
-                return;
-            const globalPositionY = node.getComputedStyle().globalY;
-            let parent = node === null || node === void 0 ? void 0 : node.parentNode;
-            while (!!parent && parent !== currentPageNode) {
-                if ((parent === null || parent === void 0 ? void 0 : parent.nodeName) === 'SCROLL-VIEW') {
-                    scrollNode = parent;
-                    break;
-                }
-                parent = parent === null || parent === void 0 ? void 0 : parent.parentNode;
-            }
-            if (!scrollNode)
-                return;
-            // FIXME 更新为新的获取方式获取组件参数
-            const result = Current.nativeModule.getCurrentOffset(scrollNode);
-            if (!result)
-                return;
-            const { yOffset, xOffset } = result;
-            scrollTopValue = globalPositionY + yOffset + pxTransformHelper(offsetTop, 'px', true);
-            scrollLeftValue = xOffset;
-        }
-        if (scrollTopValue === -1) {
-            return handle.fail({
-                errMsg: '请检查传入的 scrollTop 或 selector 是否合法'
-            }, { resolve, reject });
-        }
-        try {
-            Current.nativeModule.scrollTo(currentPageNode, {
-                xOffset: scrollLeftValue,
-                yOffset: scrollTopValue,
-                duration,
-            });
-            setTimeout(() => {
-                handle.success({}, { resolve, reject });
-            }, duration);
-        }
-        catch (err) {
-            return handle.fail({
-                errMsg: err.message
-            }, { resolve, reject });
-        }
-    });
-};
-
-class Animation {
-    constructor({ duration = 400, delay = 0, timingFunction = 'linear', transformOrigin = '50% 50% 0', unit = 'px' } = {}) {
-        // 组合动画
-        this.steps = [];
-        // 属性组合
-        this.rule = {};
-        this.unit = unit;
-        this.setDefault(duration, delay, timingFunction, transformOrigin);
-    }
-    // 设置默认值
-    setDefault(duration, delay, timingFunction, transformOrigin) {
-        this.DEFAULT = { duration, delay, timingFunction, transformOrigin };
-    }
-    export() {
-        const actions = this.steps.slice();
-        this.steps = [];
-        this.rule = {};
-        return {
-            actions
-        };
-    }
-    step(arg = {}) {
-        const { DEFAULT } = this;
-        const { duration = DEFAULT.duration, delay = DEFAULT.delay, timingFunction = DEFAULT.timingFunction, transformOrigin = DEFAULT.transformOrigin } = arg;
-        this.steps.push({
-            duration,
-            delay,
-            timingFunction,
-            transformOrigin,
-            rule: Object.assign({}, this.rule)
-        });
-        if (this.rule.transform) {
-            this.rule.transform = Object.assign({}, this.rule.transform);
-        }
-        return this;
-    }
-    matrix(a, b, c, d, tx, ty) {
-        this.rule.transform = matrix4.init([a, b, c, d, tx, ty]);
-        return this;
-    }
-    matrix3d(a1, b1, c1, d1, a2, b2, c2, d2, a3, b3, c3, d3, a4, b4, c4, d4) {
-        this.rule.transform = matrix4.init([a1, b1, c1, d1, a2, b2, c2, d2, a3, b3, c3, d3, a4, b4, c4, d4]);
-        return this;
-    }
-    rotate(angle) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Rotate = { x: 0, y: 0, z: 1, angle };
-        return this;
-    }
-    rotate3d(x, y, z, angle) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Rotate = { x, y, z, angle };
-        return this;
-    }
-    rotateX(angle) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Rotate = { x: 1, y: 0, z: 0, angle };
-        return this;
-    }
-    rotateY(angle) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Rotate = { x: 0, y: 1, z: 0, angle };
-        return this;
-    }
-    rotateZ(angle) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Rotate = { x: 0, y: 0, z: 1, angle };
-        return this;
-    }
-    scale(sx, sy) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Scale = { x: sx, y: isUndefined(sy) ? sx : sy };
-        return this;
-    }
-    scale3d(sx, sy, sz) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Scale = { x: sx, y: sy, z: sz };
-        return this;
-    }
-    scaleX(scale) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Scale = { x: scale };
-        return this;
-    }
-    scaleY(scale) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Scale = { y: scale };
-        return this;
-    }
-    scaleZ(scale) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Scale = { z: scale };
-        return this;
-    }
-    skew(ax, ay) {
-        temporarilyNotSupport('animation.skew:' + `${ax}, ${ay}`)(ax, ay);
-        return this;
-    }
-    skewX(angle) {
-        temporarilyNotSupport('animation.skewX:' + angle)(angle);
-        return this;
-    }
-    skewY(angle) {
-        temporarilyNotSupport('animation.skewY:' + angle)(angle);
-        return this;
-    }
-    translate(tx, ty) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Translate = { x: tx, y: ty };
-        return this;
-    }
-    translate3d(tx, ty, tz) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Translate = { x: tx, y: ty, z: tz };
-        return this;
-    }
-    translateX(translation) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Translate = { x: translation };
-        return this;
-    }
-    translateY(translation) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Translate = { y: translation };
-        return this;
-    }
-    translateZ(translation) {
-        if (!this.rule.transform) {
-            this.rule.transform = {};
-        }
-        this.rule.transform.Translate = { z: translation };
-        return this;
-    }
-    opacity(value) {
-        this.rule.opacity = value;
-        return this;
-    }
-    backgroundColor(value) {
-        this.rule.backgroundColor = value;
-        return this;
-    }
-    width(value) {
-        this.rule.width = value;
-        return this;
-    }
-    height(value) {
-        this.rule.height = value;
-        return this;
-    }
-    left(value) {
-        this.rule.left = value;
-        return this;
-    }
-    right(value) {
-        temporarilyNotSupport('animation.right:' + value)(value);
-        return this;
-    }
-    top(value) {
-        this.rule.top = value;
-        return this;
-    }
-    bottom(value) {
-        temporarilyNotSupport('animation.bottom:' + value)(value);
-        return this;
-    }
-}
-
-const createAnimation = (option) => {
-    return new Animation(option);
-};
-
-const setBackgroundTextStyle = /* @__PURE__ */ temporarilyNotSupport('setBackgroundTextStyle');
-function setBackgroundColor(options) {
-    const { success, fail, complete } = options || {};
-    const handle = new MethodHandler({ name: 'setBackgroundColor', success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger('__taroPageStyle', {
-            backgroundColor: options.backgroundColorBottom || options.backgroundColor,
-            backgroundColorContext: options.backgroundColorTop || options.backgroundColor
-        });
-        return handle.success({}, { resolve, reject });
-    });
-}
-
-// 字体
-const loadFontFace = /* @__PURE__ */ temporarilyNotSupport('getMenuButtonBoundingClientRect');
-
-// 菜单
-const getMenuButtonBoundingClientRect = /* @__PURE__ */ temporarilyNotSupport('getMenuButtonBoundingClientRect');
-
-const setNavigationBarTitle = function (options) {
-    const { success, fail, complete } = options || {};
-    const handle = new MethodHandler({ name: 'setNavigationBarTitle', success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger('__taroNavigationStyle', {
-            title: options.title,
-        });
-        return handle.success({}, { resolve, reject });
-    });
-};
-const setNavigationBarColor = function (options) {
-    const { success, fail, complete } = options || {};
-    const handle = new MethodHandler({ name: 'setNavigationBarColor', success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger('__taroNavigationStyle', {
-            animation: options.animation,
-            backgroundColor: options.backgroundColor,
-            frontColor: options.frontColor,
-        });
-        return handle.success({}, { resolve, reject });
-    });
-};
-const showNavigationBarLoading = function (options) {
-    const { success, fail, complete } = options || {};
-    const handle = new MethodHandler({ name: 'showNavigationBarLoading', success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger('__taroNavigationStyle', {
-            loading: true,
-        });
-        return handle.success({}, { resolve, reject });
-    });
-};
-const hideNavigationBarLoading = function (options) {
-    const { success, fail, complete } = options || {};
-    const handle = new MethodHandler({ name: 'hideNavigationBarLoading', success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger('__taroNavigationStyle', {
-            loading: false,
-        });
-        return handle.success({}, { resolve, reject });
-    });
-};
-const hideHomeButton = function (options) {
-    const { success, fail, complete } = options || {};
-    const handle = new MethodHandler({ name: 'hideHomeButton', success, fail, complete });
-    return new Promise((resolve, reject) => {
-        eventCenter.trigger('__taroNavigationStyle', {
-            home: false,
-        });
-        return handle.success({}, { resolve, reject });
-    });
-};
-
-const startPullDownRefresh = function (options) {
-    return new Promise((resolve, reject) => {
-        var _a;
-        const taro = Current.taro;
-        const page = taro.getCurrentInstance().page;
-        if (!page) {
-            return callAsyncFail(reject, { errMsg: 'stopPullDownRefresh:fail' }, options);
-        }
-        if (page.isRefreshing instanceof Array) {
-            const index = page.tabBarCurrentIndex || 0;
-            page.isRefreshing[index] = true;
-        }
-        else {
-            page.isRefreshing = true;
-        }
-        const res = { errMsg: 'startPullDownRefresh:ok' };
-        (_a = page.$set) === null || _a === void 0 ? void 0 : _a.call(page, 'isRefreshing', true);
-        callAsyncSuccess(resolve, res, options);
-    });
-};
-const stopPullDownRefresh = function (options) {
-    return new Promise((resolve, reject) => {
-        var _a;
-        const taro = Current.taro;
-        const page = taro.getCurrentInstance().page;
-        if (!page) {
-            return callAsyncFail(reject, { errMsg: 'stopPullDownRefresh:fail' }, options);
-        }
-        if (page.isRefreshing instanceof Array) {
-            const index = page.tabBarCurrentIndex || 0;
-            page.isRefreshing[index] = false;
-        }
-        else {
-            page.isRefreshing = false;
-        }
-        const res = { errMsg: 'stopPullDownRefresh:ok' };
-        (_a = page.$set) === null || _a === void 0 ? void 0 : _a.call(page, 'isRefreshing', false);
-        callAsyncSuccess(resolve, res, options);
-    });
-};
-
-// 置顶
-const setTopBarText = /* @__PURE__ */ temporarilyNotSupport('setTopBarText');
-
-const toggleTabBar = function (type) {
-    return function (options) {
-        return new Promise((resolve, reject) => {
-            var _a, _b;
-            const taro = Current.taro;
-            const page = taro.getCurrentInstance().page;
-            const currentData = ((_a = page === null || page === void 0 ? void 0 : page._data) === null || _a === void 0 ? void 0 : _a.taroTabBar) || (page === null || page === void 0 ? void 0 : page.tabBar);
-            const res = { errMsg: `${type}TabBar:ok` };
-            const error = { errMsg: `${type}TabBar:fail not TabBar page` };
-            if (!currentData) {
-                callAsyncFail(reject, error, options);
-            }
-            else {
-                const isShow = type === 'show';
-                const event = isShow ? '__taroShowTabBar' : '__taroHideTabBar';
-                eventCenter.trigger(event, {
-                    animation: options === null || options === void 0 ? void 0 : options.animation,
-                });
-                (_b = page.$set) === null || _b === void 0 ? void 0 : _b.call(page, 'isShowTaroTabBar', isShow);
-                callAsyncSuccess(resolve, res, options);
-            }
-        });
-    };
-};
-const showTabBar = toggleTabBar('show');
-const hideTabBar = toggleTabBar('hide');
-const setTabBarStyle = function (options = {}) {
-    return new Promise((resolve, reject) => {
-        var _a, _b;
-        const taro = Current.taro;
-        const page = taro.getCurrentInstance().page;
-        const currentData = ((_a = page === null || page === void 0 ? void 0 : page._data) === null || _a === void 0 ? void 0 : _a.taroTabBar) || (page === null || page === void 0 ? void 0 : page.tabBar);
-        const res = { errMsg: 'setTabBarStyle:ok' };
-        const error = { errMsg: 'setTabBarStyle:fail not TabBar page' };
-        if (!currentData) {
-            callAsyncFail(reject, error, options);
-        }
-        else {
-            const data = Object.assign({}, currentData);
-            if (options.color)
-                data.color = options.color;
-            if (options.selectedColor)
-                data.selectedColor = options.selectedColor;
-            if (options.backgroundColor)
-                data.backgroundColor = options.backgroundColor;
-            if (options.borderStyle)
-                data.borderStyle = options.borderStyle;
-            eventCenter.trigger('__taroSetTabBarStyle', options);
-            (_b = page.$set) === null || _b === void 0 ? void 0 : _b.call(page, 'taroTabBar', data);
-            callAsyncSuccess(resolve, res, options);
-        }
-    });
-};
-const setTabBarItem = function (options) {
-    return new Promise((resolve, reject) => {
-        var _a, _b;
-        const taro = Current.taro;
-        const page = taro.getCurrentInstance().page;
-        const currentData = ((_a = page === null || page === void 0 ? void 0 : page._data) === null || _a === void 0 ? void 0 : _a.taroTabBar) || (page === null || page === void 0 ? void 0 : page.tabBar);
-        const res = { errMsg: 'setTabBarItem:ok' };
-        const error = { errMsg: 'setTabBarItem:fail not TabBar page' };
-        if (!currentData) {
-            callAsyncFail(reject, error, options);
-        }
-        else {
-            const index = options.index;
-            const item = Object.assign({}, currentData.list[index]);
-            if (options.text)
-                item.text = options.text;
-            if (options.iconPath)
-                item.iconPath = options.iconPath;
-            if (options.selectedIconPath)
-                item.selectedIconPath = options.selectedIconPath;
-            const list = [
-                ...currentData.list.slice(0, index),
-                item,
-                ...currentData.list.slice(index + 1)
-            ];
-            const data = Object.assign({}, currentData, { list });
-            eventCenter.trigger('__taroSetTabBarItem', options);
-            (_b = page.$set) === null || _b === void 0 ? void 0 : _b.call(page, 'taroTabBar', data);
-            callAsyncSuccess(resolve, res, options);
-        }
-    });
-};
-function showTabBarRedDot(options) {
-    const res = { errMsg: 'showTabBarRedDot:ok' };
-    return new Promise((resolve) => {
-        eventCenter.trigger('__taroShowTabBarRedDotHandler', {
-            index: (options === null || options === void 0 ? void 0 : options.index) || 0,
-        });
-        callAsyncSuccess(resolve, res, options);
-    });
-}
-function hideTabBarRedDot(options) {
-    const res = { errMsg: 'hideTabBarRedDot:ok' };
-    return new Promise((resolve) => {
-        eventCenter.trigger('__taroHideTabBarRedDotHandler', {
-            index: (options === null || options === void 0 ? void 0 : options.index) || 0,
-        });
-        callAsyncSuccess(resolve, res, options);
-    });
-}
-function setTabBarBadge(options) {
-    const res = { errMsg: 'setTabBarBadge:ok' };
-    return new Promise((resolve) => {
-        const text = (options === null || options === void 0 ? void 0 : options.text) || '';
-        eventCenter.trigger('__taroSetTabBarBadge', {
-            index: (options === null || options === void 0 ? void 0 : options.index) || 0,
-            text: text.replace(/[\u0391-\uFFE5]/g, 'aa').length > 4 ? '...' : text,
-        });
-        callAsyncSuccess(resolve, res, options);
-    });
-}
-function removeTabBarBadge(options) {
-    const res = { errMsg: 'removeTabBarBadge:ok' };
-    return new Promise((resolve) => {
-        eventCenter.trigger('__taroRemoveTabBarBadge', {
-            index: (options === null || options === void 0 ? void 0 : options.index) || 0,
-        });
-        callAsyncSuccess(resolve, res, options);
-    });
-}
-
-/**
- * 设置窗口大小，该接口仅适用于 PC 平台，使用细则请参见指南
- */
-const setWindowSize = /* @__PURE__ */ temporarilyNotSupport('setWindowSize');
-/**
- * 监听窗口尺寸变化事件
- */
-const onWindowResize = /* @__PURE__ */ temporarilyNotSupport('onWindowResize');
-/**
- * 取消监听窗口尺寸变化事件
- */
-const offWindowResize = /* @__PURE__ */ temporarilyNotSupport('offWindowResize');
-const checkIsPictureInPictureActive = /* @__PURE__ */ temporarilyNotSupport('checkIsPictureInPictureActive');
-
-class IntersectionObserver {
-    constructor(component, options = {}) {
-        this._options = {
-            thresholds: [0],
-            initialRatio: 0,
-            observeAll: false,
-        };
-        this._viewportMargins = {
-            left: 0,
-            top: 0,
-            right: 0,
-            bottom: 0
-        };
-        const taro = Current.taro;
-        const page = taro.getCurrentInstance().page;
-        // 兼容小程序原本的 getCurrentInstance()?.page 的写法
-        if (component && component.page === page && component.node) {
-            this._component = component.node;
-        }
-        else {
-            this._component = component || getPageScrollerOrNode(page === null || page === void 0 ? void 0 : page.node, page);
-        }
-        Object.assign(this._options, options);
-    }
-    disconnect() {
-        if (this._observerNodes && this._component) {
-            if (this._observerNodes instanceof Array) {
-                this._observerNodes.forEach((n) => {
-                    Current.nativeModule.disconnectObserve(n);
-                });
-            }
-            else {
-                Current.nativeModule.disconnectObserve(this._observerNodes);
-            }
-            if (this._timer) {
-                clearTimeout(this._timer);
-            }
-            this._observerNodes = null;
-        }
-    }
-    observe(targetSelector, callback) {
-        if (!this._component)
-            return;
-        const { observeAll, thresholds, initialRatio } = this._options;
-        const querySelectName = observeAll ? 'querySelectorAll' : 'querySelector';
-        const isComponentHaveSelectFunction = !!this._component[querySelectName];
-        const querySelector = isComponentHaveSelectFunction ? this._component[querySelectName].bind(this._component) : document[querySelectName].bind(document);
-        const node = querySelector(targetSelector);
-        this._observerNodes = node;
-        if (!node) {
-            callback({
-                errMsg: 'IntersectionObserver.observe:fail cannot find the node for selector.'
-            });
-            return;
-        }
-        const list = node instanceof Array ? node : [node];
-        list.forEach((item) => {
-            Current.nativeModule.createObserve(item, this._viewportMargins, thresholds, initialRatio, (data) => {
-                this._timer = setTimeout(() => {
-                    callback(Object.assign({ id: item.id, dataset: item.dataset, time: new Date().getTime() }, data));
-                }, 20);
-            });
-        });
-    }
-    relativeTo() {
-        temporarilyNotSupport('relativeTo')();
-        return this;
-    }
-    relativeToViewport(option) {
-        this._viewportMargins = Object.assign(this._viewportMargins, option);
-        return this;
-    }
-}
-
-class NodesRef {
-    constructor(selector, querySelectorQuery, single) {
-        this._component = querySelectorQuery._component;
-        this._selector = selector;
-        this._selectorQuery = querySelectorQuery;
-        this._single = single;
-    }
-    context(cb) {
-        const { _selector, _component, _single, _selectorQuery } = this;
-        _selectorQuery._push(_selector, _component, _single, { context: !0 }, cb);
-        return _selectorQuery;
-    }
-    node(cb) {
-        const { _selector, _component, _single, _selectorQuery } = this;
-        _selectorQuery._push(_selector, _component, _single, { nodeCanvasType: !0, node: !0 }, cb);
-        return _selectorQuery;
-    }
-    boundingClientRect(cb) {
-        const { _selector, _component, _single, _selectorQuery } = this;
-        _selectorQuery._push(_selector, _component, _single, { id: !0, dataset: !0, rect: !0, size: !0 }, cb);
-        return _selectorQuery;
-    }
-    scrollOffset(cb) {
-        const { _selector, _component, _single, _selectorQuery } = this;
-        _selectorQuery._push(_selector, _component, _single, { id: !0, dataset: !0, scrollOffset: !0 }, cb);
-        return _selectorQuery;
-    }
-    fields(fields, cb) {
-        const { _selector, _component, _single, _selectorQuery } = this;
-        const { id, dataset, rect, size, scrollOffset, properties = [], computedStyle = [], node, nodeCanvasType } = fields;
-        _selectorQuery._push(_selector, _component, _single, {
-            id,
-            dataset,
-            rect,
-            size,
-            scrollOffset,
-            properties,
-            computedStyle,
-            node,
-            nodeCanvasType,
-        }, cb);
-        return _selectorQuery;
-    }
-}
-
-// 从 TaroNode 里找到对应的 fields 内容
-function filter(fields, dom) {
-    if (!dom)
-        return null;
-    const { id, dataset, rect, size, scrollOffset, properties = [], computedStyle = [], nodeCanvasType, node, context } = fields;
-    const res = {};
-    if (nodeCanvasType && node) { // Node节点获取处理
-        const typeName = dom.nodeName;
-        res.node = {
-            id: dom.id,
-            $taroElement: dom
-        };
-        if (/^canvas/i.test(typeName)) {
-            // harmony todo canvas attr type
-            const canvasType = dom._attrs.type || '';
-            res.nodeCanvasType = canvasType;
-            if (/^(2d|webgl)/i.test(canvasType) && dom) {
-                res.node = dom;
-            }
-            else {
-                res.node = null;
-            }
-        }
-        else {
-            // TODO https://developers.weixin.qq.com/miniprogram/dev/component/scroll-view.html
-            // if (/^taro-scroll-view-core/i.test(tagName))
-            res.nodeCanvasType = '';
-            res.node = dom;
-        }
-        return res;
-    }
-    if (id)
-        res.id = dom.id;
-    if (dataset)
-        res.dataset = Object.assign({}, dom.dataset);
-    if (rect || size) {
-        const computedStyle = dom.getComputedStyle();
-        if (rect) {
-            res.top = computedStyle.globalY;
-            res.left = computedStyle.globalX;
-            res.right = res.left + computedStyle.width;
-            res.bottom = res.top + computedStyle.height;
-        }
-        if (size) {
-            res.width = computedStyle.width;
-            res.height = computedStyle.height;
-        }
-    }
-    if (scrollOffset) {
-        // FIXME 更新为新的获取方式获取组件参数
-        const result = Current.nativeModule.getCurrentOffset(dom);
-        if (result) {
-            const { xOffset, yOffset } = result;
-            res.scrollLeft = xOffset;
-            res.scrollTop = yOffset;
-        }
-    }
-    if (properties.length) {
-        properties.forEach(prop => {
-            const attrs = dom._attrs;
-            if (attrs[prop])
-                res[prop] = attrs[prop];
-        });
-    }
-    if (computedStyle.length) {
-        const styles = dom._st;
-        computedStyle.forEach(key => {
-            const value = styles[key];
-            if (value)
-                res[key] = value;
-        });
-    }
-    return res;
-}
-function queryBat(queue, cb) {
-    const result = [];
-    const taro = Current.taro;
-    const page = taro.getCurrentInstance().page;
-    const element = getPageScrollerOrNode(page === null || page === void 0 ? void 0 : page.node, page);
-    if (!element)
-        return null;
-    const actions = queue.map((item) => {
-        const { component, selector, single, fields } = item;
-        return new Promise(resolve => {
-            Current.nativeModule.querySelectDOM(component || page.node, selector, !single, (res) => {
-                if (res && res.length > 0) {
-                    if (single) {
-                        const dom = res[0];
-                        result.push(filter(fields, dom));
-                    }
-                    else {
-                        result.push(res.map(dom => {
-                            return filter(fields, dom);
-                        }));
-                    }
-                }
-                resolve();
-            });
-        });
-    });
-    Promise.all(actions).then(() => {
-        cb(result);
-    });
-}
-class SelectorQuery {
-    constructor() {
-        /**
-         * 设置选择器的选取范围
-         * @param component 指定组件
-         * @return selectQuery 返回查询对象
-         */
-        this.in = (component) => {
-            this._component = component;
-            return this;
-        };
-        this._queue = [];
-        this._queueCb = [];
-        // this._component
-    }
-    /**
-     * 在当前页面下选择第一个匹配选择器selector的节点
-     * @param selector
-     * @return nodesRef 返回一个NodesRef 对象实例，可以用于获取节点信息
-     */
-    select(selector) {
-        return new NodesRef(selector, this, true);
-    }
-    /**
-     * 在当前页面下选择匹配选择器selector的所有节点
-     * @param selector
-     */
-    selectAll(selector) {
-        return new NodesRef(selector, this, false);
-    }
-    /**
-     * 选择显示区域。可用于获取显示区域的尺寸、滚动位置等信息
-     */
-    selectViewport() {
-        return new NodesRef('.taro_page', this, true);
-    }
-    exec(cb) {
-        queryBat(this._queue, res => {
-            const _queueCb = this._queueCb;
-            res.forEach((item, index) => {
-                const cb = _queueCb[index];
-                typeof cb === 'function' && cb.call(this, item);
-            });
-            typeof cb === 'function' && cb.call(this, res);
-        });
-        return this;
-    }
-    _push(selector, component, single, fields, callback = null) {
-        this._queue.push({
-            component,
-            selector,
-            single,
-            fields
-        });
-        this._queueCb.push(callback);
-    }
-}
-
-const createSelectorQuery = () => {
-    return new SelectorQuery();
-};
-const createIntersectionObserver = (component, options) => {
-    return new IntersectionObserver(component, options);
-};
-const createMediaQueryObserver = /* @__PURE__ */ temporarilyNotSupport('createMediaQueryObserver');
-
-const reportMonitor = /* @__PURE__ */ temporarilyNotSupport('reportMonitor');
-const reportAnalytics = /* @__PURE__ */ temporarilyNotSupport('reportAnalytics');
-const reportEvent = /* @__PURE__ */ temporarilyNotSupport('reportEvent');
-const getExptInfoSync = /* @__PURE__ */ temporarilyNotSupport('getExptInfoSync');
-
 // 第三方平台
 const getExtConfigSync = /* @__PURE__ */ temporarilyNotSupport('getExtConfigSync');
 const getExtConfig = /* @__PURE__ */ temporarilyNotSupport('getExtConfig');
@@ -3397,8 +1244,7 @@ const getExtConfig = /* @__PURE__ */ temporarilyNotSupport('getExtConfig');
  * statSync：recursive 参数无效（即不支持递归获取目录下的每个文件的 Stats 信息）
  * getSavedFileList：返回值 fileList 中的每一项不包含 createTime 属性
  */
-var _a;
-const rootDataPath = `/data/data/${((_a = app.getInfo()) === null || _a === void 0 ? void 0 : _a.appID) || 'app'}`;
+const rootDataPath = `/data/data/${app.getInfo()?.appID || 'app'}`;
 const rootSavedFilePath = `${rootDataPath}/files`;
 const pathSchema = {
     path: 'String'
@@ -3784,7 +1630,7 @@ function readFileSync(filePath, encoding, position, length) {
 function write(option) {
     const data = convertDataToString(option.data);
     try {
-        validateParams('write', Object.assign(Object.assign({}, option), { data }), writeSchema);
+        validateParams('write', { ...option, data }, writeSchema);
     }
     catch (error) {
         const res = { errMsg: error.message };
@@ -3806,7 +1652,7 @@ function write(option) {
  */
 function writeSync(option) {
     const data = convertDataToString(option.data);
-    validateParams('writeSync', Object.assign(Object.assign({}, option), { data }), writeSchema);
+    validateParams('writeSync', { ...option, data }, writeSchema);
     return {
         bytesWritten: fileio.writeSync(convertFd(option.fd), data, convertWriteOption(option))
     };
@@ -3985,19 +1831,20 @@ function statWithPath(path) {
         });
     });
 }
-function statWithRecursive(rootPath) {
-    return __awaiter$1(this, void 0, void 0, function* () {
-        let result = {};
-        const { files, dirs } = yield getDirFiles(rootPath);
-        for (const dir of dirs) {
-            result[dir] = yield statWithPath(dir);
-            result = Object.assign(Object.assign({}, result), (yield statWithRecursive(dir)));
-        }
-        for (const file of files) {
-            result[file] = yield statWithPath(file);
-        }
-        return result;
-    });
+async function statWithRecursive(rootPath) {
+    let result = {};
+    const { files, dirs } = await getDirFiles(rootPath);
+    for (const dir of dirs) {
+        result[dir] = await statWithPath(dir);
+        result = {
+            ...result,
+            ...(await statWithRecursive(dir))
+        };
+    }
+    for (const file of files) {
+        result[file] = await statWithPath(file);
+    }
+    return result;
 }
 function stat(option) {
     try {
@@ -4051,7 +1898,6 @@ function getSavedFileList$1(option) {
     });
 }
 function ftruncate(option) {
-    var _a;
     try {
         validateParams('ftruncate', option, fdSchema);
     }
@@ -4059,7 +1905,7 @@ function ftruncate(option) {
         const res = { errMsg: error.message };
         return callCallbackFail(res, option);
     }
-    fileio.ftruncate(convertFd(option.fd), (_a = option.length) !== null && _a !== void 0 ? _a : 0, (error) => {
+    fileio.ftruncate(convertFd(option.fd), option.length ?? 0, (error) => {
         if (error) {
             const res = { errMsg: error.message ? error.message : error };
             callCallbackFail(res, option);
@@ -4070,12 +1916,10 @@ function ftruncate(option) {
     });
 }
 function ftruncateSync(option) {
-    var _a;
     validateParams('ftruncateSync', option, fdSchema);
-    fileio.ftruncateSync(convertFd(option.fd), (_a = option.length) !== null && _a !== void 0 ? _a : 0);
+    fileio.ftruncateSync(convertFd(option.fd), option.length ?? 0);
 }
 function truncate(option) {
-    var _a;
     try {
         validateParams('truncate', option, filePathSchema$1);
     }
@@ -4083,7 +1927,7 @@ function truncate(option) {
         const res = { errMsg: error.message };
         return callCallbackFail(res, option);
     }
-    fileio.truncate(option.filePath, (_a = option.length) !== null && _a !== void 0 ? _a : 0, (error) => {
+    fileio.truncate(option.filePath, option.length ?? 0, (error) => {
         if (error) {
             const res = { errMsg: error.message ? error.message : error };
             callCallbackFail(res, option);
@@ -4094,9 +1938,8 @@ function truncate(option) {
     });
 }
 function truncateSync(option) {
-    var _a;
     validateParams('truncateSync', option, filePathSchema$1);
-    fileio.truncateSync(option.filePath, (_a = option.length) !== null && _a !== void 0 ? _a : 0);
+    fileio.truncateSync(option.filePath, option.length ?? 0);
 }
 function close(option) {
     try {
@@ -4268,7 +2111,7 @@ function openDocument(option) {
             const res = { errMsg: error.message };
             return callAsyncFail(reject, res, option);
         }
-        document$1.show(option.filePath, '*', (error) => {
+        document.show(option.filePath, '*', (error) => {
             if (error) {
                 const res = { errMsg: error.message ? error.message : error };
                 return callAsyncFail(reject, res, option);
@@ -4314,8 +2157,7 @@ function getFileInfo(option) {
         fileSystemManager.getFileInfo({
             filePath: option.filePath,
             success: ({ size }) => {
-                var _a;
-                fileio.hash(option.filePath, (_a = option.digestAlgorithm) !== null && _a !== void 0 ? _a : 'md5').then((digest) => {
+                fileio.hash(option.filePath, option.digestAlgorithm ?? 'md5').then((digest) => {
                     callAsyncSuccess(resolve, { size, digest }, option);
                 }).catch((error) => {
                     const res = { errMsg: error.message ? error.message : error };
@@ -4356,6 +2198,623 @@ function getSavedFileInfo(option) {
     });
 }
 
+const ENV_TYPE = {
+    WEAPP: 'WEAPP',
+    SWAN: 'SWAN',
+    ALIPAY: 'ALIPAY',
+    TT: 'TT',
+    QQ: 'QQ',
+    JD: 'JD',
+    WEB: 'WEB',
+    RN: 'RN',
+    HARMONY: 'HARMONY',
+    QUICKAPP: 'QUICKAPP'
+};
+function getEnv() {
+    return ENV_TYPE.HARMONY;
+}
+// TODO
+const getCurrentPages = () => [];
+const requirePlugin$1 = temporarilyNotSupport('requirePlugin');
+/** 鸿蒙专属 */
+function updatePageSync() {
+    const node = getCurrentInstance()?.page?.node;
+    if (!node)
+        return;
+    Current.nativeModule.updatePageSync(node);
+}
+function unstable_SetPageIsTextNeedLayout(isNeed) {
+    const node = getCurrentInstance()?.page?.node;
+    if (!node)
+        return;
+    Current.nativeModule.unstable_SetPageIsTextNeedLayout(node, isNeed);
+}
+
+const scope$3 = 'taskpool';
+const type$3 = 'method';
+// TaskPool 专属方法
+const triggerTaskPoolMethods = ({ name = '', args = [], complete, fail, success, } = {}) => {
+    if (!name) {
+        throw new Error('triggerTaskPoolMethods 方法必须传入 name 参数');
+    }
+    const handle = new MethodHandler({ name, success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name,
+            args,
+            scope: scope$3,
+            type: type$3,
+            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
+            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
+        });
+    });
+};
+
+// HarmonyOS 文档: https://developer.harmonyos.com/cn/docs/documentation/doc-references/js-apis-geolocation-0000001199568865#section13752433138
+// WX 文档: https://developers.weixin.qq.com/miniprogram/dev/api/location/wx.onLocationChange.html
+// ✅ wx.offLocationChange
+// ✅ wx.getLocation
+// ✅ wx.onLocationChange
+// 不支持实现
+// ❌ wx.startLocationUpdateBackground
+// ❌ wx.onLocationChangeError
+// ❌ wx.offLocationChangeError
+// ❌ wx.openLocation 地图相关
+// ❌ wx.choosePoi 地图相关
+// ❌ wx.chooseLocation 地图相关
+// ❌ wx.stopLocationUpdate
+// ❌ wx.startLocationUpdate
+// 位置
+const stopLocationUpdate = /* @__PURE__ */ temporarilyNotSupport('stopLocationUpdate');
+const startLocationUpdateBackground = /* @__PURE__ */ temporarilyNotSupport('startLocationUpdateBackground');
+const startLocationUpdate = /* @__PURE__ */ temporarilyNotSupport('startLocationUpdate');
+const openLocation = /* @__PURE__ */ temporarilyNotSupport('openLocation');
+function formatLocation(location) {
+    const wxLocate = {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        altitude: location.altitude,
+        accuracy: location.accuracy,
+        speed: location.speed,
+        verticalAccuracy: 0, // OHOS 不支持返回此参数，直接设置为默认值
+        horizontalAccuracy: 0 // OHOS 不支持返回此参数，直接设置为默认值
+    };
+    return wxLocate;
+}
+// TODO：增加参数校验
+// const getLocationSchema = {
+//   type: 'String',
+//   altitude: 'Boolean',
+//   ishighAccuracy: 'Boolean',
+//   highAccuracyExpireTime: 'number'
+// }
+const getLocation = function (options = {}) {
+    return new Promise((resolve, reject) => {
+        /**
+         * ohos 有 priority, scenario, maxAccuracy, timeoutMs
+         * wx 有 type, altitude, isHighAccuracy, highAccuracyExpireTime
+         * 二者参数不一致
+         */
+        const { type, altitude, isHighAccuracy, highAccuracyExpireTime } = options;
+        try {
+            return geoLocationManager.getCurrentLocation({
+                type,
+                altitude,
+                isHighAccuracy,
+                highAccuracyExpireTime
+            }).then((location) => {
+                if (location.code !== 0) {
+                    callAsyncFail(reject, location, options);
+                }
+                else {
+                    const wxLocate = formatLocation(location.data);
+                    callAsyncSuccess(resolve, wxLocate, options);
+                }
+            }).catch(error => {
+                callAsyncFail(reject, error, options);
+            });
+        }
+        catch (error) {
+            callAsyncFail(reject, error, options);
+        }
+    });
+};
+const onLocationChange = function (callback) {
+    const name = 'onLocationChange';
+    const handle = new MethodHandler({ name, complete: callback });
+    try {
+        validateParams(name, [callback], ['Function']);
+        geoLocationManager.on('locationChange', {}, (location) => {
+            if (location) {
+                const wxLocate = formatLocation(location);
+                callback(wxLocate);
+            }
+        });
+    }
+    catch (error) {
+        handle.fail({
+            errMsg: error
+        });
+    }
+};
+const offLocationChange = function (callback) {
+    const name = 'offLocationChange';
+    const handle = new MethodHandler({ name, complete: callback });
+    try {
+        validateParams(name, [callback], ['Function']);
+        geoLocationManager.off('locationChange', (location) => {
+            const status = {
+                errCode: 200,
+                errMsg: location ? 'offLocationChange is off' : 'offLocationChange err'
+            };
+            if (callback) {
+                callback(status);
+            }
+        });
+    }
+    catch (error) {
+        handle.fail({
+            errMsg: error
+        });
+    }
+};
+const onLocationChangeError = /* @__PURE__ */ temporarilyNotSupport('onLocationChangeError');
+const offLocationChangeError = /* @__PURE__ */ temporarilyNotSupport('offLocationChangeError');
+const choosePoi = /* @__PURE__ */ temporarilyNotSupport('choosePoi');
+const chooseLocation = /* @__PURE__ */ temporarilyNotSupport('chooseLocation');
+const getFuzzyLocation = /* @__PURE__ */ temporarilyNotSupport('getFuzzyLocation');
+
+// 音频
+const stopVoice = /* @__PURE__ */ temporarilyNotSupport('stopVoice');
+const setInnerAudioOption = /* @__PURE__ */ temporarilyNotSupport('setInnerAudioOption');
+const playVoice = /* @__PURE__ */ temporarilyNotSupport('playVoice');
+const pauseVoice = /* @__PURE__ */ temporarilyNotSupport('pauseVoice');
+const getAvailableAudioSources = /* @__PURE__ */ temporarilyNotSupport('getAvailableAudioSources');
+const createWebAudioContext = /* @__PURE__ */ temporarilyNotSupport('createWebAudioContext');
+const createMediaAudioPlayer = /* @__PURE__ */ temporarilyNotSupport('createMediaAudioPlayer');
+/**
+ * 创建内部 audio 上下文 InnerAudioContext 对象。
+ */
+const createInnerAudioContext = /* @__PURE__ */ temporarilyNotSupport('createInnerAudioContext');
+const createAudioContext = /* @__PURE__ */ temporarilyNotSupport('createAudioContext');
+
+// 背景音频
+const stopBackgroundAudio = /* @__PURE__ */ temporarilyNotSupport('stopBackgroundAudio');
+const seekBackgroundAudio = /* @__PURE__ */ temporarilyNotSupport('seekBackgroundAudio');
+const playBackgroundAudio = /* @__PURE__ */ temporarilyNotSupport('playBackgroundAudio');
+const pauseBackgroundAudio = /* @__PURE__ */ temporarilyNotSupport('pauseBackgroundAudio');
+const onBackgroundAudioStop = /* @__PURE__ */ temporarilyNotSupport('onBackgroundAudioStop');
+const onBackgroundAudioPlay = /* @__PURE__ */ temporarilyNotSupport('onBackgroundAudioPlay');
+const onBackgroundAudioPause = /* @__PURE__ */ temporarilyNotSupport('onBackgroundAudioPause');
+const getBackgroundAudioPlayerState = /* @__PURE__ */ temporarilyNotSupport('getBackgroundAudioPlayerState');
+/**
+ * 获取全局唯一的背景音频管理器
+ */
+const getBackgroundAudioManager = /* @__PURE__ */ temporarilyNotSupport('getBackgroundAudioManager');
+
+// 相机
+class CameraContext {
+    constructor() {
+        this.onCameraFrame = temporarilyNotSupport('CameraContext.onCameraFrame');
+        this.setZoom = temporarilyNotSupport('CameraContext.setZoom');
+        this.startRecord = temporarilyNotSupport('CameraContext.startRecord');
+        this.stopRecord = temporarilyNotSupport('CameraContext.stopRecord');
+        this.takePhoto = temporarilyNotSupport('CameraContext.takePhoto');
+    }
+}
+const createCameraContext = (_) => {
+    return new CameraContext();
+};
+
+// HarmonyOS 文档链接：https://developer.harmonyos.com/cn/docs/documentation/doc-references/js-apis-media-0000001103383404
+// WX 文档链接：https://developers.weixin.qq.com/miniprogram/dev/api/media/image/wx.previewMedia.html
+// ✅ wx.previewMedia(Object object)
+// ✅ wx.chooseMedia
+// TODO: 扩展支持预览video
+const previewMedia = temporarilyNotSupport('previewMedia');
+const chooseMedia = function (options) {
+    return new Promise((resolve, reject) => {
+        try {
+            validateParams('chooseMedia', [options], ['Object']);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            return callAsyncFail(reject, res, options);
+        }
+        const { count = 9, mediaType = ['image'] } = options;
+        const mediaTypeAdapter = {
+            0b1: photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE,
+            0b10: photoAccessHelper.PhotoViewMIMETypes.VIDEO_TYPE,
+            0b11: photoAccessHelper.PhotoViewMIMETypes.IMAGE_VIDEO_TYPE,
+        };
+        const photoViewPicker = new photoAccessHelper.PhotoViewPicker();
+        const photoSelectOptions = new photoAccessHelper.PhotoSelectOptions();
+        photoSelectOptions.maxSelectNumber = count; // 选择媒体文件的最大数目
+        photoSelectOptions.MIMEType =
+            mediaTypeAdapter[mediaType.reduce((acc, cur) => {
+                switch (cur) {
+                    case 'image':
+                        return acc | 0b1;
+                    case 'video':
+                        return acc | 0b10;
+                    default:
+                        return acc;
+                }
+            }, 0b1)];
+        photoSelectOptions.isOriginalSupported = true;
+        photoViewPicker
+            .select(photoSelectOptions)
+            .then((photoSelectResult) => {
+            const uris = photoSelectResult.photoUris;
+            callAsyncSuccess(resolve, { tempFilePaths: uris });
+        })
+            .catch((error) => {
+            callAsyncFail(reject, error, options);
+        });
+    });
+};
+
+const scope$2 = 'media';
+const type$2 = 'method';
+const previewImage = function (options) {
+    const name = 'previewImage';
+    const { success, fail, complete } = options;
+    const handle = new MethodHandler({ name, success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name,
+            args: [options],
+            scope: scope$2,
+            type: type$2,
+            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
+            errorHandler: (res = {}) => handle.fail(res, { resolve, reject }),
+        });
+    });
+};
+const getImageInfoSchema = {
+    src: 'String',
+};
+const compressImageSchema = {
+    src: 'String',
+};
+const chooseImageSchema = {
+    count: 'Number',
+};
+const photoSelectOptions = new photoAccessHelper.PhotoSelectOptions();
+const getImageInfo = function (options) {
+    return new Promise((resolve, reject) => {
+        try {
+            validateParams('getImageInfo', options, getImageInfoSchema);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            return callAsyncFail(reject, res, options);
+        }
+        const { src } = options;
+        // FIX: 调试发现在版本api7中 source 为 undefined, 需鸿蒙侧确认
+        const source = image.createImageSource(src);
+        if (isNull(source)) {
+            const createImageSourceError = { errMsg: 'getImageInfo fail: createImageSource has failed.' };
+            callAsyncFail(reject, createImageSourceError, options);
+            return;
+        }
+        source
+            .getImageInfo()
+            .then((value) => {
+            callAsyncSuccess(resolve, value, options);
+        })
+            .catch((error) => {
+            callAsyncFail(reject, error, options);
+        });
+    });
+};
+class CompressedImageInfo {
+    constructor() {
+        this.imageUri = ''; // 压缩后图片保存位置的uri
+        this.imageByteLength = 0; // 压缩后图片字节长度
+    }
+}
+async function saveImage(compressedImageData, compressedImageUri) {
+    const tempArr = compressedImageUri.split('/');
+    const name = tempArr[tempArr.length - 1];
+    const context = getContext(Current?.page);
+    const applicationContext = context.getApplicationContext();
+    const tempDir = applicationContext.tempDir;
+    const filePath = `${tempDir}/${name}`;
+    try {
+        const res = fs.accessSync(filePath);
+        if (res) {
+            // 如果图片afterCompressiona.jpeg已存在，则删除
+            fs.unlinkSync(filePath);
+        }
+    }
+    catch (err) {
+        console.error(`[Taro] saveImage Error: AccessSync failed with error message: ${err.message}, error code: ${err.code}`);
+    }
+    // 知识点：保存图片。获取最终图片压缩数据compressedImageData，保存图片。
+    // 压缩图片数据写入文件
+    const file = fs.openSync(filePath, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+    fs.writeSync(file.fd, compressedImageData);
+    fs.closeSync(file);
+    // 获取压缩图片信息
+    const compressedImageInfo = new CompressedImageInfo();
+    compressedImageInfo.imageUri = filePath;
+    compressedImageInfo.imageByteLength = compressedImageData.byteLength;
+    return compressedImageInfo;
+}
+const compressImage = function (options) {
+    return new Promise((resolve, reject) => {
+        try {
+            validateParams('compressImage', options, compressImageSchema);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            return callAsyncFail(reject, res, options);
+        }
+        const { src, quality = 80, compressedWidth, compressedHeight } = options;
+        const srcAfterCompress = src.includes('_after_compress') ? src : src.split('.').join('_after_compress.');
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name: 'compressImage',
+            args: [src, quality, compressedWidth, compressedHeight],
+            scope: 'taskpool',
+            type: 'method',
+            successHandler(pixelMap) {
+                const packer = image.createImagePacker();
+                if (isNull(packer)) {
+                    const createImagePackerError = { errMsg: 'compressImage fail: createImagePacker has failed.' };
+                    callAsyncFail(reject, createImagePackerError, options);
+                    return;
+                }
+                const isPNG = src.endsWith('.png');
+                const packingOptionsOHOS = {
+                    format: isPNG ? 'image/png' : 'image/jpeg',
+                    quality: quality,
+                };
+                packer
+                    .packing(pixelMap, packingOptionsOHOS)
+                    .then((value) => {
+                    saveImage(value, srcAfterCompress).then((result) => {
+                        callAsyncSuccess(resolve, { tempFilePath: result.imageUri }, options);
+                    });
+                })
+                    .catch((error) => {
+                    callAsyncFail(reject, error, options);
+                });
+            },
+            errorHandler(res) {
+                callAsyncFail(reject, res, options);
+            },
+        });
+    });
+};
+const chooseImage = function (options) {
+    return new Promise((resolve, reject) => {
+        try {
+            validateParams('chooseImage', options, chooseImageSchema);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            return callAsyncFail(reject, res, options);
+        }
+        const { count = 9 } = options;
+        const photoViewPicker = new photoAccessHelper.PhotoViewPicker();
+        let sizeType = options.sizeType;
+        if (!sizeType || !sizeType.length) {
+            sizeType = ['compressed', 'original'];
+        }
+        photoSelectOptions.maxSelectNumber = count; // 选择媒体文件的最大数目
+        photoSelectOptions.MIMEType = photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE; // 过滤选择媒体文件类型为IMAGE
+        photoSelectOptions.isOriginalSupported = true; // 支持选择原图
+        photoViewPicker
+            .select(photoSelectOptions)
+            .then((photoSelectResult) => {
+            const result = {};
+            const isOrigin = photoSelectResult.isOriginalPhoto;
+            if (isOrigin) {
+                const getSizeAction = photoSelectResult.photoUris.map((uri) => {
+                    return new Promise((resolve, reject) => {
+                        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+                            name: 'getImageSize',
+                            args: [uri],
+                            scope: 'taskpool',
+                            type: 'method',
+                            successHandler({ data }) {
+                                resolve({
+                                    size: data,
+                                    path: uri,
+                                });
+                            },
+                            errorHandler(res) {
+                                reject(res);
+                            },
+                        });
+                    });
+                });
+                Promise.all(getSizeAction).then((tempFiles) => {
+                    result.tempFiles = tempFiles;
+                    result.tempFilePaths = tempFiles.map((item) => item.path);
+                    callAsyncSuccess(resolve, result, options);
+                });
+            }
+            else {
+                const actions = photoSelectResult.photoUris.map((uri) => {
+                    return new Promise((resolve, reject) => {
+                        compressImage({
+                            src: uri,
+                            compressedWidth: getSystemInfoSync().screenWidth / 2,
+                            compressedHeight: getSystemInfoSync().screenHeight / 2,
+                            success: (compressResult) => {
+                                resolve(compressResult.tempFilePath);
+                            },
+                            fail: (err) => {
+                                reject(err);
+                            }
+                        });
+                    });
+                });
+                const sizeAction = actions.map((p) => {
+                    return new Promise((resolve, reject) => {
+                        p.then((uri) => {
+                            eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+                                name: 'getImageSize',
+                                args: [uri],
+                                scope: 'taskpool',
+                                type: 'method',
+                                successHandler({ data }) {
+                                    resolve({
+                                        size: data,
+                                        path: uri,
+                                    });
+                                },
+                                errorHandler(res) {
+                                    reject(res);
+                                },
+                            });
+                        }).catch((e) => {
+                            reject(e);
+                        });
+                    });
+                });
+                Promise.all(sizeAction)
+                    .then((tempFiles) => {
+                    result.tempFilePaths = tempFiles.map((item) => item.path);
+                    result.tempFiles = tempFiles;
+                    callAsyncSuccess(resolve, result, options);
+                })
+                    .catch((error) => {
+                    const res = { errMsg: error };
+                    return callAsyncFail(reject, res, options);
+                });
+            }
+        })
+            .catch((error) => {
+            callAsyncFail(reject, error, options);
+        });
+    });
+};
+const saveImageToPhotosAlbum = temporarilyNotSupport('saveImageToPhotosAlbum');
+
+// 实时音视频
+const createLivePusherContext = /* @__PURE__ */ temporarilyNotSupport('createLivePusherContext');
+const createLivePlayerContext = /* @__PURE__ */ temporarilyNotSupport('createLivePlayerContext');
+
+// 地图
+const createMapContext = /* @__PURE__ */ temporarilyNotSupport('createMapContext');
+
+// 画面录制器
+const createMediaRecorder = /* @__PURE__ */ temporarilyNotSupport('createMediaRecorder');
+
+// 录音
+const stopRecord = /* @__PURE__ */ temporarilyNotSupport('stopRecord');
+const startRecord = /* @__PURE__ */ temporarilyNotSupport('startRecord');
+const getRecorderManager = /* @__PURE__ */ temporarilyNotSupport('getRecorderManager');
+
+class VideoContext {
+    constructor(id) {
+        this.requestBackgroundPlayback = temporarilyNotSupport('VideoContext.requestBackgroundPlayback');
+        this.exitBackgroundPlayback = temporarilyNotSupport('VideoContext.exitBackgroundPlayback');
+        this.exitPictureInPicture = temporarilyNotSupport('VideoContext.exitPictureInPicture');
+        this.hideStatusBar = temporarilyNotSupport('VideoContext.hideStatusBar');
+        this.playbackRate = temporarilyNotSupport('VideoContext.playbackRate');
+        this.sendDanmu = temporarilyNotSupport('VideoContext.sendDanmu');
+        this.showStatusBar = temporarilyNotSupport('VideoContext.showStatusBar');
+        this.id = id;
+        this.video = document$1.getElementById(id);
+        if (this.video) {
+            this.controller = this.video.controller;
+        }
+    }
+    play() {
+        if (!this.controller)
+            return;
+        this.controller.play();
+    }
+    pause() {
+        if (!this.controller)
+            return;
+        this.controller.pause();
+    }
+    stop() {
+        if (!this.controller)
+            return;
+        this.controller.stop();
+    }
+    seek(position) {
+        if (!this.controller)
+            return;
+        this.controller.setCurrentTime(position);
+    }
+    requestFullScreen() {
+        if (!this.controller)
+            return;
+        this.controller.requestFullscreen(true);
+    }
+    exitFullScreen() {
+        if (!this.controller)
+            return;
+        this.controller.exitFullscreen();
+    }
+}
+
+const createVideoContext = (id, _) => {
+    return new VideoContext(id);
+};
+// TODO: 1.返回属性补全
+// TODO: 2.只支持从相册选择，补充摄像头拍摄功能，需要HarmonyOS提供选择组件
+const chooseVideo = function (options = {}) {
+    return new Promise((resolve, reject) => {
+        try {
+            validateParams('chooseVideo', [options], ['Object']);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            return callAsyncFail(reject, res, options);
+        }
+        const photoViewPicker = new photoAccessHelper.PhotoViewPicker();
+        const photoSelectOptions = new photoAccessHelper.PhotoSelectOptions();
+        photoSelectOptions.maxSelectNumber = 9; // 选择媒体文件的最大数目
+        photoSelectOptions.MIMEType = photoAccessHelper.PhotoViewMIMETypes.VIDEO_TYPE; // 过滤选择媒体文件类型为IMAGE
+        photoSelectOptions.isOriginalSupported = true; // 支持选择原图
+        photoViewPicker
+            .select(photoSelectOptions)
+            .then((photoSelectResult) => {
+            const uris = photoSelectResult.photoUris;
+            callAsyncSuccess(resolve, { tempFilePaths: uris });
+        })
+            .catch((error) => {
+            callAsyncFail(reject, error, options);
+        });
+    });
+};
+const compressVideo = /* @__PURE__ */ temporarilyNotSupport('compressVideo');
+const getVideoInfo = /* @__PURE__ */ temporarilyNotSupport('getVideoInfo');
+const openVideoEditor = /* @__PURE__ */ temporarilyNotSupport('openVideoEditor');
+const saveVideoToPhotosAlbum = temporarilyNotSupport('saveVideoToPhotosAlbum');
+
+// 视频解码器
+const createVideoDecoder = /* @__PURE__ */ temporarilyNotSupport('createVideoDecoder');
+
+// 音视频合成
+const createMediaContainer = /* @__PURE__ */ temporarilyNotSupport('createMediaContainer');
+
+// 实时语音
+const updateVoIPChatMuteConfig = /* @__PURE__ */ temporarilyNotSupport('updateVoIPChatMuteConfig');
+const subscribeVoIPVideoMembers = /* @__PURE__ */ temporarilyNotSupport('subscribeVoIPVideoMembers');
+const setEnable1v1Chat = /* @__PURE__ */ temporarilyNotSupport('setEnable1v1Chat');
+const onVoIPVideoMembersChanged = /* @__PURE__ */ temporarilyNotSupport('onVoIPVideoMembersChanged');
+const onVoIPChatStateChanged = /* @__PURE__ */ temporarilyNotSupport('onVoIPChatStateChanged');
+const onVoIPChatSpeakersChanged = /* @__PURE__ */ temporarilyNotSupport('onVoIPChatSpeakersChanged');
+const onVoIPChatMembersChanged = /* @__PURE__ */ temporarilyNotSupport('onVoIPChatMembersChanged');
+const onVoIPChatInterrupted = /* @__PURE__ */ temporarilyNotSupport('onVoIPChatInterrupted');
+const offVoIPChatSpeakersChanged = /* @__PURE__ */ temporarilyNotSupport('offVoIPChatSpeakersChanged');
+const offVoIPVideoMembersChanged = /* @__PURE__ */ temporarilyNotSupport('offVoIPVideoMembersChanged');
+const offVoIPChatStateChanged = /* @__PURE__ */ temporarilyNotSupport('offVoIPChatStateChanged');
+const offVoIPChatMembersChanged = /* @__PURE__ */ temporarilyNotSupport('offVoIPChatMembersChanged');
+const offVoIPChatInterrupted = /* @__PURE__ */ temporarilyNotSupport('offVoIPChatInterrupted');
+const joinVoIPChat = /* @__PURE__ */ temporarilyNotSupport('joinVoIPChat');
+const join1v1Chat = /* @__PURE__ */ temporarilyNotSupport('join1v1Chat');
+const exitVoIPChat = /* @__PURE__ */ temporarilyNotSupport('exitVoIPChat');
+
 // 跳转
 const openEmbeddedMiniProgram = /* @__PURE__ */ temporarilyNotSupport('openEmbeddedMiniProgram');
 const navigateToMiniProgram = /* @__PURE__ */ temporarilyNotSupport('navigateToMiniProgram');
@@ -4363,10 +2822,603 @@ const navigateBackMiniProgram = /* @__PURE__ */ temporarilyNotSupport('navigateB
 const exitMiniProgram = /* @__PURE__ */ temporarilyNotSupport('exitMiniProgram');
 const openBusinessView = /* @__PURE__ */ temporarilyNotSupport('openBusinessView');
 
+const downloadFileSchema = {
+    url: 'String'
+};
+const downloadFile = function (options) {
+    let task;
+    let isComplete = false;
+    const progressHandles = [];
+    const requestTask = new Promise((resolve, reject) => {
+        const { url, header, filePath, success, fail, complete } = options;
+        const handle = new MethodHandler({ name: 'downloadFile', success, fail, complete });
+        try {
+            validateParams('downloadFile', options, downloadFileSchema);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            return handle.fail(res, { resolve, reject });
+        }
+        const params = {
+            url,
+            header,
+            filePath,
+            context: getContext(this),
+            success: (requestData) => {
+                const reswx = {
+                    data: requestData
+                };
+                handle.success(reswx, { resolve, reject });
+            },
+            fail: (data) => {
+                handle.fail(data, { resolve, reject });
+            },
+            complete: () => {
+                isComplete = true;
+            },
+            progress: (loaded, total) => {
+                const progress = loaded / total;
+                progressHandles.forEach(fn => fn({ progress }));
+            }
+        };
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name: 'downloadFile',
+            args: [params],
+            scope: 'network',
+            type: 'method',
+            onInit: (obj) => {
+                task = obj;
+            }
+        });
+    });
+    requestTask.abort = function () {
+        task?.abort?.();
+    };
+    requestTask.onProgressUpdate = (fn) => {
+        if (isComplete) {
+            fn({ progress: 1 });
+        }
+        else {
+            task?.onProgressUpdate(fn);
+        }
+    };
+    requestTask.offProgressUpdate = (fn) => {
+        task?.offProgressUpdate?.(fn);
+    };
+    requestTask.onHeadersReceived = (fn) => {
+        task?.onHeadersReceived?.(fn);
+    };
+    requestTask.offHeadersReceived = (fn) => {
+        task?.offHeadersReceived?.(fn);
+    };
+    return requestTask;
+};
+
+// mDNS
+const stopLocalServiceDiscovery = /* @__PURE__ */ temporarilyNotSupport('stopLocalServiceDiscovery');
+const startLocalServiceDiscovery = /* @__PURE__ */ temporarilyNotSupport('startLocalServiceDiscovery');
+const onLocalServiceResolveFail = /* @__PURE__ */ temporarilyNotSupport('onLocalServiceResolveFail');
+const onLocalServiceLost = /* @__PURE__ */ temporarilyNotSupport('onLocalServiceLost');
+const onLocalServiceFound = /* @__PURE__ */ temporarilyNotSupport('onLocalServiceFound');
+const onLocalServiceDiscoveryStop = /* @__PURE__ */ temporarilyNotSupport('onLocalServiceDiscoveryStop');
+const offLocalServiceResolveFail = /* @__PURE__ */ temporarilyNotSupport('offLocalServiceResolveFail');
+const offLocalServiceLost = /* @__PURE__ */ temporarilyNotSupport('offLocalServiceLost');
+const offLocalServiceFound = /* @__PURE__ */ temporarilyNotSupport('offLocalServiceFound');
+const offLocalServiceDiscoveryStop = /* @__PURE__ */ temporarilyNotSupport('offLocalServiceDiscoveryStop');
+
+const METHOD = ['OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE', 'CONNECT'];
+const scope$1 = 'network';
+const type$1 = 'method';
+const requestSchema = {
+    url: 'String',
+};
+const request = (options) => {
+    let task;
+    const requestTask = new Promise((resolve, reject) => {
+        let { method = 'GET' } = options;
+        const { url, header = {}, timeout = 60000, dataType = 'json', data, enableHttpDNS = false, success, fail, complete, } = options;
+        const handle = new MethodHandler({ name: 'request', success, fail, complete });
+        // ** 校验入参 **
+        const isGetRequest = method.toUpperCase() === 'GET';
+        if (!isGetRequest) {
+            // -> 1.没有 content-type 的加上默认 application/json
+            const keyOfContentType = Object.keys(header).find((item) => item.toLowerCase() === 'content-type');
+            !keyOfContentType && (header['Content-Type'] = 'application/json');
+        }
+        // -> 2. 检查 method 是否正确
+        if (METHOD.includes(method.toUpperCase())) {
+            method = method.toUpperCase();
+        }
+        else {
+            const error = {
+                errMsg: `request fail parameter error: the method value should be one of the ${METHOD.join(',')}`,
+            };
+            handle.fail(error, { resolve, reject });
+        }
+        // -> 3. 校验send的数据类型
+        try {
+            validateParams('send', options, requestSchema);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            handle.fail(res, { resolve, reject });
+        }
+        // ** 校验入参 **
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name: 'request',
+            args: [
+                {
+                    ...options,
+                    url,
+                    method: method.toUpperCase(),
+                    header,
+                    timeout,
+                    dataType,
+                    data: data,
+                    enableSuccessResponse: true,
+                    enableHttpDNS,
+                    success: (requestData) => {
+                        const reswx = {
+                            data: requestData.data,
+                            statusCode: requestData.status,
+                            headers: requestData.headers,
+                        };
+                        handle.success(reswx, { resolve, reject });
+                    },
+                    fail: (data) => {
+                        handle.fail(data, { resolve, reject });
+                    },
+                },
+            ],
+            scope: scope$1,
+            type: type$1,
+            onInit: (obj) => {
+                task = obj;
+            },
+        });
+    });
+    requestTask.abort = function () {
+        task?.abort?.();
+    };
+    requestTask.onHeadersReceived = (fn) => {
+        task?.onHeadersReceived?.(fn);
+    };
+    requestTask.offHeadersReceived = (fn) => {
+        task?.offHeadersReceived?.(fn);
+    };
+    requestTask.onChunkReceived = (fn) => {
+        task?.onChunkReceived?.(fn);
+    };
+    requestTask.offChunkReceived = (fn) => {
+        task?.offChunkReceived?.(fn);
+    };
+    return requestTask;
+};
+
+// TCP 通信
+const createTCPSocket = /* @__PURE__ */ temporarilyNotSupport('createTCPSocket');
+
+// UDP 通信
+const createUDPSocket = /* @__PURE__ */ temporarilyNotSupport('createUDPSocket');
+
+const uploadSchema = {
+    url: 'String',
+    // filePath: 'String',
+    // name: 'String'
+};
+const uploadFile = function (options) {
+    let task;
+    let isComplete = false;
+    const progressHandles = [];
+    const requestTask = new Promise((resolve, reject) => {
+        // let timer
+        const { url, filePath, name, formData, header = {}, success, fail, complete } = options;
+        const handle = new MethodHandler({ name: 'uploadFile', success, fail, complete });
+        // -> 1.校验url格式
+        try {
+            validateParams('uploadFile', options, uploadSchema);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            return handle.fail(res, { resolve, reject });
+        }
+        const param = {
+            url,
+            filePath,
+            formData,
+            name,
+            method: 'POST',
+            context: getContext(this),
+            header,
+            success: (requestData) => {
+                const reswx = {
+                    data: requestData
+                };
+                handle.success(reswx, { resolve, reject });
+            },
+            fail: (data) => {
+                handle.fail(data, { resolve, reject });
+            },
+            complete: () => {
+                isComplete = true;
+            },
+            progress: (loaded, total) => {
+                const progress = loaded / total;
+                progressHandles.forEach(fn => fn({ progress }));
+            }
+        };
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name: 'uploadFile',
+            args: [param],
+            scope: 'network',
+            type: 'method',
+            onInit: (obj) => {
+                task = obj;
+            }
+        });
+    });
+    requestTask.abort = function () {
+        task?.abort?.();
+    };
+    requestTask.onProgressUpdate = (fn) => {
+        if (isComplete) {
+            fn({ progress: 1 });
+        }
+        else {
+            task?.onProgressUpdate(fn);
+        }
+    };
+    requestTask.offProgressUpdate = (fn) => {
+        task?.offProgressUpdate?.(fn);
+    };
+    requestTask.onHeadersReceived = (fn) => {
+        task?.onHeadersReceived?.(fn);
+    };
+    requestTask.offHeadersReceived = (fn) => {
+        task?.offHeadersReceived?.(fn);
+    };
+    return requestTask;
+};
+
+// OpenHarmony 不支持全局操作 WebSocket
+// HarmonyOS 文档链接：https://developer.harmonyos.com/cn/docs/documentation/doc-references/js-apis-net-websocket-0000001168304641
+// WX 文档链接：https://developers.weixin.qq.com/miniprogram/dev/api/network/websocket/wx.sendSocketMessage.html
+// ✅ wx.connectSocket
+// ✅ SocketTask
+// ✅ SocketTask.close
+// ✅ SocketTask.onClose
+// ✅ SocketTask.onError
+// ✅ SocketTask.onMessage
+// ✅ SocketTask.onOpen
+// ✅ SocketTask.send
+// ❌ wx.sendSocketMessage
+// ❌ wx.onSocketOpen
+// ❌ wx.onSocketMessage
+// ❌ wx.onSocketError
+// ❌ wx.onSocketClose
+// ❌ wx.closeSocket
+const connectSocketSchema = {
+    url: 'String'
+};
+// const closetSocketSchema = {
+//   code: 'Number',
+//   reason: 'String'
+// }
+const sendSocketSchema = {
+    data: 'String'
+};
+const connectSocket = function (options) {
+    let ws;
+    const SocketTaskWX = new Promise((resolve, reject) => {
+        ws = webSocket.createWebSocket();
+        const { url, header } = options;
+        try {
+            validateParams('uploadFile', options, connectSocketSchema);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            return callAsyncFail(reject, res, options);
+        }
+        ws.connect(url, { header }).then((value) => {
+            callAsyncSuccess(resolve, value, options);
+        }).catch((err) => {
+            callAsyncFail(reject, err, options);
+        });
+    });
+    SocketTaskWX.close = function (closeOptions) {
+        return new Promise((resolve, reject) => {
+            // TODO: 检验非必须参数
+            // try {
+            //   validateParams('close', options, closeSocketSchema)
+            // } catch (error) {
+            //   const res = { errMsg: error.message }
+            //   return callAsyncFail(reject, res, options)
+            // }
+            ws.close(closeOptions).then(value => {
+                callAsyncSuccess(resolve, value, closeOptions);
+            }, error => {
+                callAsyncFail(reject, error, closeOptions);
+            });
+        });
+    };
+    SocketTaskWX.onClose = function (onCloseCallback) {
+        validateParams('onClose', [onCloseCallback], ['Function']);
+        ws.on('close', (err, value) => {
+            onCloseCallback(!err ? value : err);
+        });
+    };
+    SocketTaskWX.onError = function (onErrorCallback) {
+        validateParams('onError', [onErrorCallback], ['Function']);
+        ws.on('error', (err) => {
+            onErrorCallback(err);
+        });
+    };
+    SocketTaskWX.onMessage = function (onMessageCallback) {
+        validateParams('onMessage', [onMessageCallback], ['Function']);
+        ws.on('onMessage', (err, value) => {
+            onMessageCallback(!err ? value : err);
+        });
+    };
+    SocketTaskWX.onOpen = function (onOpenCallback) {
+        validateParams('onOpen', [onOpenCallback], ['Function']);
+        ws.on('open', (err, value) => {
+            // TODO：返回数据字段完全不一样，无法兼容，暂不处理
+            // wx:{header, profile}, ohos:{err, value:{status, message}}
+            onOpenCallback(!err ? value : err);
+        });
+    };
+    SocketTaskWX.send = function (sendOptions) {
+        return new Promise((resolve, reject) => {
+            const { data } = sendOptions;
+            try {
+                validateParams('send', sendOptions, sendSocketSchema);
+            }
+            catch (error) {
+                const res = { errMsg: error.message };
+                return callAsyncFail(reject, res, options);
+            }
+            ws.send(data).then(value => {
+                callAsyncSuccess(resolve, value, sendOptions);
+            }, error => {
+                callAsyncFail(reject, error, sendOptions);
+            });
+        });
+    };
+    return SocketTaskWX;
+};
+
+// 帐号信息
+const getAccountInfoSync = /* @__PURE__ */ temporarilyNotSupport('getAccountInfoSync');
+
+// 收货地址
+const chooseAddress = /* @__PURE__ */ temporarilyNotSupport('chooseAddress');
+
+// 授权
+const authorizeForMiniProgram = /* @__PURE__ */ temporarilyNotSupport('authorizeForMiniProgram');
+const authorize = /* @__PURE__ */ temporarilyNotSupport('authorize');
+
+// 卡券
+const openCard = /* @__PURE__ */ temporarilyNotSupport('openCard');
+const addCard = /* @__PURE__ */ temporarilyNotSupport('addCard');
+
+// 视频号
+const reserveChannelsLive = /* @__PURE__ */ temporarilyNotSupport('reserveChannelsLive');
+const openChannelsUserProfile = /* @__PURE__ */ temporarilyNotSupport('openChannelsUserProfile');
+const openChannelsLive = /* @__PURE__ */ temporarilyNotSupport('openChannelsLive');
+const openChannelsEvent = /* @__PURE__ */ temporarilyNotSupport('openChannelsEvent');
+const openChannelsActivity = /* @__PURE__ */ temporarilyNotSupport('openChannelsActivity');
+const getChannelsShareKey = /* @__PURE__ */ temporarilyNotSupport('getChannelsShareKey');
+const getChannelsLiveNoticeInfo = /* @__PURE__ */ temporarilyNotSupport('getChannelsLiveNoticeInfo');
+const getChannelsLiveInfo = /* @__PURE__ */ temporarilyNotSupport('getChannelsLiveInfo');
+
+// 微信客服
+const openCustomerServiceChat = /* @__PURE__ */ temporarilyNotSupport('openCustomerServiceChat');
+
+// 设备（组）音视频通话
+const requestDeviceVoIP = /* @__PURE__ */ temporarilyNotSupport('requestDeviceVoIP');
+const getDeviceVoIPList = /* @__PURE__ */ temporarilyNotSupport('getDeviceVoIPList');
+
+// 过往接口
+const checkIsSupportFacialRecognition = /* @__PURE__ */ temporarilyNotSupport('checkIsSupportFacialRecognition');
+const startFacialRecognitionVerify = /* @__PURE__ */ temporarilyNotSupport('startFacialRecognitionVerify');
+const startFacialRecognitionVerifyAndUploadVideo = /* @__PURE__ */ temporarilyNotSupport('startFacialRecognitionVerifyAndUploadVideo');
+const faceVerifyForPay = /* @__PURE__ */ temporarilyNotSupport('faceVerifyForPay');
+
+// 收藏
+const addVideoToFavorites = /* @__PURE__ */ temporarilyNotSupport('addVideoToFavorites');
+const addFileToFavorites = /* @__PURE__ */ temporarilyNotSupport('addFileToFavorites');
+
+// 微信群
+const getGroupEnterInfo = /* @__PURE__ */ temporarilyNotSupport('getGroupEnterInfo');
+
+// 发票
+const chooseInvoiceTitle = /* @__PURE__ */ temporarilyNotSupport('chooseInvoiceTitle');
+const chooseInvoice = /* @__PURE__ */ temporarilyNotSupport('chooseInvoice');
+
+// 车牌
+const chooseLicensePlate = /* @__PURE__ */ temporarilyNotSupport('chooseLicensePlate');
+
+// 帐号信息
+const pluginLogin = /* @__PURE__ */ temporarilyNotSupport('pluginLogin');
+const login = /* @__PURE__ */ temporarilyNotSupport('login');
+const checkSession = /* @__PURE__ */ temporarilyNotSupport('checkSession');
+
+// 我的小程序
+const checkIsAddedToMyMiniProgram = /* @__PURE__ */ temporarilyNotSupport('checkIsAddedToMyMiniProgram');
+
+// 隐私信息授权
+const requirePrivacyAuthorize = /* @__PURE__ */ temporarilyNotSupport('requirePrivacyAuthorize');
+const openPrivacyContract = /* @__PURE__ */ temporarilyNotSupport('openPrivacyContract');
+const onNeedPrivacyAuthorization = /* @__PURE__ */ temporarilyNotSupport('onNeedPrivacyAuthorization');
+const getPrivacySetting = /* @__PURE__ */ temporarilyNotSupport('getPrivacySetting');
+
+// 微信红包
+const showRedPackage = /* @__PURE__ */ temporarilyNotSupport('showRedPackage');
+
+// 设置
+const openSetting = /* @__PURE__ */ temporarilyNotSupport('openSetting');
+const getSetting = /* @__PURE__ */ temporarilyNotSupport('getSetting');
+
+// 生物认证
+const startSoterAuthentication = /* @__PURE__ */ temporarilyNotSupport('startSoterAuthentication');
+const checkIsSupportSoterAuthentication = /* @__PURE__ */ temporarilyNotSupport('checkIsSupportSoterAuthentication');
+const checkIsSoterEnrolledInDevice = /* @__PURE__ */ temporarilyNotSupport('checkIsSoterEnrolledInDevice');
+
+// 订阅消息
+const requestSubscribeMessage = /* @__PURE__ */ temporarilyNotSupport('requestSubscribeMessage');
+// 订阅设备消息
+const requestSubscribeDeviceMessage = /* @__PURE__ */ temporarilyNotSupport('requestSubscribeDeviceMessage');
+
+/**
+ * 用户相关API， Harmony ACE API 6
+ *
+ * 1. 华为账号场景介绍文档 @see https://developer.huawei.com/consumer/cn/doc/development/HMSCore-Guides/harmonyos-js-login-0000001151310900
+ * 2. 华为账号API参考 @see https://developer.huawei.com/consumer/cn/doc/development/HMSCore-References/harmonyos-js-overview-0000001063532145
+ */
+// import hmsJSAccount from '@hmscore/hms-jsb-account'
+/**
+ * 通过Scope数组获取已登录的对应帐号信息(依赖login行为)
+ * @param options
+ */
+const getUserInfo = temporarilyNotSupport('getUserInfo');
+// export function getUserInfo (options) {
+//   const { success, fail, complete } = options
+//   const res: Record<string, any> = {}
+//   // const result = hmsJSAccount.HuaweiIdAuthManager.getAuthResultWithScopes([hmsJSAccount.PROFILE])
+//   const result = null
+//   if (result) {
+//     res.data = { userInfo: generateUserInfo(result) }
+//     isFunction(success) && success(res)
+//   } else {
+//     res.errorMsg = 'getUserInfo result data is null'
+//     isFunction(fail) && fail(res)
+//   }
+//   isFunction(complete) && complete(res)
+// }
+/**
+ * 获取用户信息
+ */
+const getUserProfile = temporarilyNotSupport('getUserProfile');
+// export const getUserProfile = (_options) => {
+//   return new Promise((resolve, reject) => {
+//     const res: Record<string, any> = {}
+//     hmsJSAccount.HuaweiIdAuthManager.addAuthScopes([hmsJSAccount.PROFILE])
+//       .then(result => {
+//         if (result) {
+//           res.data = { userInfo: generateUserInfo(result) }
+//           callAsyncSuccess(resolve, res, options)
+//         } else {
+//           res.errorMsg = 'getUserProfile result data is null'
+//           callAsyncFail(reject, res, options)
+//         }
+//       })
+//       .catch(error => {
+//         callAsyncFail(reject, error, options)
+//       })
+//   })
+// }
+// function generateUserInfo (hmsAuthInfo) {
+//   const userInfo = {
+//     nickName: String,
+//     avatarUrl: String,
+//     gender: Number,
+//     country: String
+//   }
+//   if (hmsAuthInfo) {
+//     userInfo.nickName = hmsAuthInfo.displayName
+//     userInfo.avatarUrl = hmsAuthInfo.photoUriString
+//     userInfo.gender = hmsAuthInfo.gender
+//     userInfo.country = hmsAuthInfo.country
+//   }
+//   return userInfo
+// }
+
+// 微信运动
+const shareToWeRun = /* @__PURE__ */ temporarilyNotSupport('shareToWeRun');
+const getWeRunData = /* @__PURE__ */ temporarilyNotSupport('getWeRunData');
+
 // 支付
 const requestPayment = /* @__PURE__ */ temporarilyNotSupport('requestPayment');
 const requestPluginPayment = /* @__PURE__ */ temporarilyNotSupport('requestPluginPayment');
 const requestOrderPayment = /* @__PURE__ */ temporarilyNotSupport('requestOrderPayment');
+
+const scope = 'route';
+const type = 'method';
+const navigateTo = (options) => {
+    const name = 'navigateTo';
+    const { success, fail, complete } = options;
+    const handle = new MethodHandler({ name, success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name,
+            args: [options],
+            scope,
+            type,
+            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
+            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
+        });
+    });
+};
+const redirectTo = (options) => {
+    const name = 'redirectTo';
+    const { success, fail, complete } = options;
+    const handle = new MethodHandler({ name, success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name,
+            args: [options],
+            scope,
+            type,
+            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
+            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
+        });
+    });
+};
+const navigateBack = (options = {}) => {
+    const name = 'navigateBack';
+    const { success, fail, complete } = options;
+    const handle = new MethodHandler({ name, success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name,
+            args: [options],
+            scope,
+            type,
+            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
+            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
+        });
+    });
+};
+const reLaunch = (options) => {
+    const name = 'reLaunch';
+    const { success, fail, complete } = options;
+    const handle = new MethodHandler({ name, success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name,
+            args: [options],
+            scope,
+            type,
+            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
+            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
+        });
+    });
+};
+const switchTab = (options) => {
+    const name = 'switchTab';
+    const { success, fail, complete } = options;
+    const handle = new MethodHandler({ name, success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
+            name,
+            args: [options],
+            scope,
+            type,
+            successHandler: (res = {}) => handle.success(res, { resolve, reject }),
+            errorHandler: (res = {}) => handle.fail(res, { resolve, reject })
+        });
+    });
+};
 
 // 转发
 /** 更新转发属性 */
@@ -4566,8 +3618,967 @@ const setStorageSync = temporarilyNotSupport('setStorageSync', 'setStorage');
 const clearStorageSync = temporarilyNotSupport('clearStorageSync', 'clearStorage');
 const removeStorageSync = temporarilyNotSupport('removeStorageSync', 'removeStorage');
 
+class Animation {
+    constructor({ duration = 400, delay = 0, timingFunction = 'linear', transformOrigin = '50% 50% 0', unit = 'px' } = {}) {
+        // 组合动画
+        this.steps = [];
+        // 属性组合
+        this.rule = {};
+        this.unit = unit;
+        this.setDefault(duration, delay, timingFunction, transformOrigin);
+    }
+    // 设置默认值
+    setDefault(duration, delay, timingFunction, transformOrigin) {
+        this.DEFAULT = { duration, delay, timingFunction, transformOrigin };
+    }
+    export() {
+        const actions = this.steps.slice();
+        this.steps = [];
+        this.rule = {};
+        return {
+            actions
+        };
+    }
+    step(arg = {}) {
+        const { DEFAULT } = this;
+        const { duration = DEFAULT.duration, delay = DEFAULT.delay, timingFunction = DEFAULT.timingFunction, transformOrigin = DEFAULT.transformOrigin } = arg;
+        this.steps.push({
+            duration,
+            delay,
+            timingFunction,
+            transformOrigin,
+            rule: Object.assign({}, this.rule)
+        });
+        if (this.rule.transform) {
+            this.rule.transform = Object.assign({}, this.rule.transform);
+        }
+        return this;
+    }
+    matrix(a, b, c, d, tx, ty) {
+        this.rule.transform = matrix4.init([a, b, c, d, tx, ty]);
+        return this;
+    }
+    matrix3d(a1, b1, c1, d1, a2, b2, c2, d2, a3, b3, c3, d3, a4, b4, c4, d4) {
+        this.rule.transform = matrix4.init([a1, b1, c1, d1, a2, b2, c2, d2, a3, b3, c3, d3, a4, b4, c4, d4]);
+        return this;
+    }
+    rotate(angle) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Rotate = { x: 0, y: 0, z: 1, angle };
+        return this;
+    }
+    rotate3d(x, y, z, angle) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Rotate = { x, y, z, angle };
+        return this;
+    }
+    rotateX(angle) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Rotate = { x: 1, y: 0, z: 0, angle };
+        return this;
+    }
+    rotateY(angle) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Rotate = { x: 0, y: 1, z: 0, angle };
+        return this;
+    }
+    rotateZ(angle) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Rotate = { x: 0, y: 0, z: 1, angle };
+        return this;
+    }
+    scale(sx, sy) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Scale = { x: sx, y: isUndefined(sy) ? sx : sy };
+        return this;
+    }
+    scale3d(sx, sy, sz) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Scale = { x: sx, y: sy, z: sz };
+        return this;
+    }
+    scaleX(scale) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Scale = { x: scale };
+        return this;
+    }
+    scaleY(scale) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Scale = { y: scale };
+        return this;
+    }
+    scaleZ(scale) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Scale = { z: scale };
+        return this;
+    }
+    skew(ax, ay) {
+        temporarilyNotSupport('animation.skew:' + `${ax}, ${ay}`)(ax, ay);
+        return this;
+    }
+    skewX(angle) {
+        temporarilyNotSupport('animation.skewX:' + angle)(angle);
+        return this;
+    }
+    skewY(angle) {
+        temporarilyNotSupport('animation.skewY:' + angle)(angle);
+        return this;
+    }
+    translate(tx, ty) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Translate = { x: tx, y: ty };
+        return this;
+    }
+    translate3d(tx, ty, tz) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Translate = { x: tx, y: ty, z: tz };
+        return this;
+    }
+    translateX(translation) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Translate = { x: translation };
+        return this;
+    }
+    translateY(translation) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Translate = { y: translation };
+        return this;
+    }
+    translateZ(translation) {
+        if (!this.rule.transform) {
+            this.rule.transform = {};
+        }
+        this.rule.transform.Translate = { z: translation };
+        return this;
+    }
+    opacity(value) {
+        this.rule.opacity = value;
+        return this;
+    }
+    backgroundColor(value) {
+        this.rule.backgroundColor = value;
+        return this;
+    }
+    width(value) {
+        this.rule.width = value;
+        return this;
+    }
+    height(value) {
+        this.rule.height = value;
+        return this;
+    }
+    left(value) {
+        this.rule.left = value;
+        return this;
+    }
+    right(value) {
+        temporarilyNotSupport('animation.right:' + value)(value);
+        return this;
+    }
+    top(value) {
+        this.rule.top = value;
+        return this;
+    }
+    bottom(value) {
+        temporarilyNotSupport('animation.bottom:' + value)(value);
+        return this;
+    }
+}
+
+const createAnimation = (option) => {
+    return new Animation(option);
+};
+
+const setBackgroundTextStyle = /* @__PURE__ */ temporarilyNotSupport('setBackgroundTextStyle');
+function setBackgroundColor(options) {
+    const { success, fail, complete } = options || {};
+    const handle = new MethodHandler({ name: 'setBackgroundColor', success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger('__taroPageStyle', {
+            backgroundColor: options.backgroundColorBottom || options.backgroundColor,
+            backgroundColorContext: options.backgroundColorTop || options.backgroundColor
+        });
+        return handle.success({}, { resolve, reject });
+    });
+}
+
+// 字体
+const loadFontFace = /* @__PURE__ */ temporarilyNotSupport('getMenuButtonBoundingClientRect');
+
+const resCallback = (res) => {
+    return { errMsg: `${res}:ok` };
+};
+const showToastSchema = {
+    title: 'String',
+    duration: 'Number',
+    bottom: 'String'
+};
+function showToast(options) {
+    return new Promise((resolve, reject) => {
+        const _default = {
+            title: '',
+            duration: 1500,
+            bottom: '50%'
+        };
+        options = { ..._default, ...options };
+        try {
+            validateParams('showToast', options, showToastSchema);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            return callAsyncFail(reject, res, options);
+        }
+        // @ts-ignore
+        const uiContext = Current?.page?.getUIContext?.();
+        if (!uiContext)
+            return;
+        uiContext.getPromptAction().showToast({
+            message: options.title,
+            duration: options.duration,
+            bottom: options.bottom,
+            showMode: 1 // 设置弹窗显示模式，显示在应用之上。
+        });
+        callAsyncSuccess(resolve, resCallback('showToast'), options);
+    });
+}
+function showModal(options) {
+    const _default = {
+        title: '',
+        content: '',
+        showCancel: true,
+        cancelText: '取消',
+        cancelColor: '#000000',
+        confirmText: '确定',
+        confirmColor: '#3CC51F',
+        backgroundColor: '#ffffff'
+    };
+    options = { ..._default, ...options };
+    const { title, content, cancelText, confirmText, cancelColor, confirmColor, showCancel, backgroundColor } = options;
+    const buttons = [];
+    if (cancelText !== '' && showCancel) {
+        buttons.push({
+            text: cancelText,
+            color: cancelColor
+        });
+    }
+    if (confirmText !== '') {
+        buttons.push({
+            text: confirmText,
+            color: confirmColor
+        });
+    }
+    return new Promise((resolve, reject) => {
+        const modalOptions = {
+            title,
+            message: content,
+            buttons: buttons,
+            backgroundColor
+        };
+        // @ts-ignore
+        const uiContext = Current?.page?.getUIContext?.();
+        if (!uiContext)
+            return;
+        uiContext.getPromptAction().showDialog(modalOptions, (error, data) => {
+            if (error) {
+                const res = { errMsg: error };
+                callAsyncFail(reject, res, options);
+            }
+            if (data.index === 0 && showCancel) {
+                callAsyncSuccess(resolve, {
+                    ...resCallback('showModal'),
+                    confirm: false,
+                    cancel: true
+                }, options);
+            }
+            else {
+                callAsyncSuccess(resolve, {
+                    ...resCallback('showModal'),
+                    confirm: true,
+                    cancel: false,
+                    content: null
+                }, options);
+            }
+        });
+    });
+}
+const showActionSheetSchema = {
+    title: 'String',
+    itemList: 'Array'
+};
+function showActionSheet(options) {
+    return new Promise((resolve, reject) => {
+        const _default = {
+            title: '',
+            itemList: [],
+            itemColor: '#000000'
+        };
+        options = { ..._default, ...options };
+        try {
+            validateParams('showActionSheet', options, showActionSheetSchema);
+        }
+        catch (error) {
+            const res = { errMsg: error.message };
+            return callAsyncFail(reject, res, options);
+        }
+        const { title, itemList, itemColor } = options;
+        const buttons = itemList.map(res => {
+            return {
+                text: res,
+                color: itemColor
+            };
+        });
+        const actionSheetOptions = {
+            title,
+            buttons
+        };
+        // @ts-ignore
+        const uiContext = Current?.page?.getUIContext?.();
+        if (!uiContext)
+            return;
+        uiContext.getPromptAction().showActionMenu(actionSheetOptions, (error, data) => {
+            if (error) {
+                callAsyncFail(reject, {
+                    ...data,
+                    errMsg: data.errMsg?.replace('showActionMenu', 'showActionSheet')
+                }, options);
+            }
+            callAsyncSuccess(resolve, {
+                ...data,
+                ...resCallback('showActionSheet')
+            }, options);
+        });
+    });
+}
+const hideToast = /* @__PURE__ */ temporarilyNotSupport('hideToast');
+const showLoading = temporarilyNotSupport('showLoading');
+const hideLoading = temporarilyNotSupport('hideLoading');
+const enableAlertBeforeUnload = /* @__PURE__ */ temporarilyNotSupport('enableAlertBeforeUnload');
+const disableAlertBeforeUnload = /* @__PURE__ */ temporarilyNotSupport('disableAlertBeforeUnload');
+
+// 菜单
+const getMenuButtonBoundingClientRect = /* @__PURE__ */ temporarilyNotSupport('getMenuButtonBoundingClientRect');
+
+const setNavigationBarTitle = function (options) {
+    const { success, fail, complete } = options || {};
+    const handle = new MethodHandler({ name: 'setNavigationBarTitle', success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger('__taroNavigationStyle', {
+            title: options.title,
+        });
+        return handle.success({}, { resolve, reject });
+    });
+};
+const setNavigationBarColor = function (options) {
+    const { success, fail, complete } = options || {};
+    const handle = new MethodHandler({ name: 'setNavigationBarColor', success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger('__taroNavigationStyle', {
+            animation: options.animation,
+            backgroundColor: options.backgroundColor,
+            frontColor: options.frontColor,
+        });
+        return handle.success({}, { resolve, reject });
+    });
+};
+const showNavigationBarLoading = function (options) {
+    const { success, fail, complete } = options || {};
+    const handle = new MethodHandler({ name: 'showNavigationBarLoading', success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger('__taroNavigationStyle', {
+            loading: true,
+        });
+        return handle.success({}, { resolve, reject });
+    });
+};
+const hideNavigationBarLoading = function (options) {
+    const { success, fail, complete } = options || {};
+    const handle = new MethodHandler({ name: 'hideNavigationBarLoading', success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger('__taroNavigationStyle', {
+            loading: false,
+        });
+        return handle.success({}, { resolve, reject });
+    });
+};
+const hideHomeButton = function (options) {
+    const { success, fail, complete } = options || {};
+    const handle = new MethodHandler({ name: 'hideHomeButton', success, fail, complete });
+    return new Promise((resolve, reject) => {
+        eventCenter.trigger('__taroNavigationStyle', {
+            home: false,
+        });
+        return handle.success({}, { resolve, reject });
+    });
+};
+
+const startPullDownRefresh = function (options) {
+    return new Promise((resolve, reject) => {
+        const taro = Current.taro;
+        const page = taro.getCurrentInstance().page;
+        if (!page) {
+            return callAsyncFail(reject, { errMsg: 'stopPullDownRefresh:fail' }, options);
+        }
+        if (page.isRefreshing instanceof Array) {
+            const index = page.tabBarCurrentIndex || 0;
+            page.isRefreshing[index] = true;
+        }
+        else {
+            page.isRefreshing = true;
+        }
+        const res = { errMsg: 'startPullDownRefresh:ok' };
+        page.$set?.('isRefreshing', true);
+        callAsyncSuccess(resolve, res, options);
+    });
+};
+const stopPullDownRefresh = function (options) {
+    return new Promise((resolve, reject) => {
+        const taro = Current.taro;
+        const page = taro.getCurrentInstance().page;
+        if (!page) {
+            return callAsyncFail(reject, { errMsg: 'stopPullDownRefresh:fail' }, options);
+        }
+        if (page.isRefreshing instanceof Array) {
+            const index = page.tabBarCurrentIndex || 0;
+            page.isRefreshing[index] = false;
+        }
+        else {
+            page.isRefreshing = false;
+        }
+        const res = { errMsg: 'stopPullDownRefresh:ok' };
+        page.$set?.('isRefreshing', false);
+        callAsyncSuccess(resolve, res, options);
+    });
+};
+
+const pageScrollTo = (options) => {
+    const { scrollTop, selector = '', duration = 300, offsetTop = 0, success, fail, complete } = options || {};
+    const handle = new MethodHandler({ name: 'pageScrollTo', success, fail, complete });
+    return new Promise((resolve, reject) => {
+        if (scrollTop === undefined && !selector) {
+            return handle.fail({
+                errMsg: 'scrollTop" 或 "selector" 需要其之一'
+            }, { resolve, reject });
+        }
+        if (scrollTop && selector) {
+            console.warn('"scrollTop" 或 "selector" 建议只设一个值, 全部设置会忽略selector');
+        }
+        const taro = Current.taro;
+        const page = taro.getCurrentInstance().page;
+        let scrollTopValue = -1;
+        let scrollLeftValue = -1;
+        let scrollNode = null;
+        const currentPageNode = getPageScrollerOrNode(page?.node, page);
+        if (scrollTop || typeof scrollTop === 'number') {
+            scrollTopValue = scrollTop;
+        }
+        else if (selector) {
+            const node = document$1.querySelector(selector);
+            if (!node)
+                return;
+            const globalPositionY = node.getComputedStyle().globalY;
+            let parent = node?.parentNode;
+            while (!!parent && parent !== currentPageNode) {
+                if (parent?.nodeName === 'SCROLL-VIEW') {
+                    scrollNode = parent;
+                    break;
+                }
+                parent = parent?.parentNode;
+            }
+            if (!scrollNode)
+                return;
+            // FIXME 更新为新的获取方式获取组件参数
+            const result = Current.nativeModule.getCurrentOffset(scrollNode);
+            if (!result)
+                return;
+            const { yOffset, xOffset } = result;
+            scrollTopValue = globalPositionY + yOffset + pxTransformHelper(offsetTop, 'px', true);
+            scrollLeftValue = xOffset;
+        }
+        if (scrollTopValue === -1) {
+            return handle.fail({
+                errMsg: '请检查传入的 scrollTop 或 selector 是否合法'
+            }, { resolve, reject });
+        }
+        try {
+            Current.nativeModule.scrollTo(currentPageNode, {
+                xOffset: scrollLeftValue,
+                yOffset: scrollTopValue,
+                duration,
+            });
+            setTimeout(() => {
+                handle.success({}, { resolve, reject });
+            }, duration);
+        }
+        catch (err) {
+            return handle.fail({
+                errMsg: err.message
+            }, { resolve, reject });
+        }
+    });
+};
+
+// 置顶
+const setTopBarText = /* @__PURE__ */ temporarilyNotSupport('setTopBarText');
+
+const toggleTabBar = function (type) {
+    return function (options) {
+        return new Promise((resolve, reject) => {
+            const taro = Current.taro;
+            const page = taro.getCurrentInstance().page;
+            const currentData = page?._data?.taroTabBar || page?.tabBar;
+            const res = { errMsg: `${type}TabBar:ok` };
+            const error = { errMsg: `${type}TabBar:fail not TabBar page` };
+            if (!currentData) {
+                callAsyncFail(reject, error, options);
+            }
+            else {
+                const isShow = type === 'show';
+                const event = isShow ? '__taroShowTabBar' : '__taroHideTabBar';
+                eventCenter.trigger(event, {
+                    animation: options?.animation,
+                });
+                page.$set?.('isShowTaroTabBar', isShow);
+                callAsyncSuccess(resolve, res, options);
+            }
+        });
+    };
+};
+const showTabBar = toggleTabBar('show');
+const hideTabBar = toggleTabBar('hide');
+const setTabBarStyle = function (options = {}) {
+    return new Promise((resolve, reject) => {
+        const taro = Current.taro;
+        const page = taro.getCurrentInstance().page;
+        const currentData = page?._data?.taroTabBar || page?.tabBar;
+        const res = { errMsg: 'setTabBarStyle:ok' };
+        const error = { errMsg: 'setTabBarStyle:fail not TabBar page' };
+        if (!currentData) {
+            callAsyncFail(reject, error, options);
+        }
+        else {
+            const data = Object.assign({}, currentData);
+            if (options.color)
+                data.color = options.color;
+            if (options.selectedColor)
+                data.selectedColor = options.selectedColor;
+            if (options.backgroundColor)
+                data.backgroundColor = options.backgroundColor;
+            if (options.borderStyle)
+                data.borderStyle = options.borderStyle;
+            eventCenter.trigger('__taroSetTabBarStyle', options);
+            page.$set?.('taroTabBar', data);
+            callAsyncSuccess(resolve, res, options);
+        }
+    });
+};
+const setTabBarItem = function (options) {
+    return new Promise((resolve, reject) => {
+        const taro = Current.taro;
+        const page = taro.getCurrentInstance().page;
+        const currentData = page?._data?.taroTabBar || page?.tabBar;
+        const res = { errMsg: 'setTabBarItem:ok' };
+        const error = { errMsg: 'setTabBarItem:fail not TabBar page' };
+        if (!currentData) {
+            callAsyncFail(reject, error, options);
+        }
+        else {
+            const index = options.index;
+            const item = Object.assign({}, currentData.list[index]);
+            if (options.text)
+                item.text = options.text;
+            if (options.iconPath)
+                item.iconPath = options.iconPath;
+            if (options.selectedIconPath)
+                item.selectedIconPath = options.selectedIconPath;
+            const list = [
+                ...currentData.list.slice(0, index),
+                item,
+                ...currentData.list.slice(index + 1)
+            ];
+            const data = Object.assign({}, currentData, { list });
+            eventCenter.trigger('__taroSetTabBarItem', options);
+            page.$set?.('taroTabBar', data);
+            callAsyncSuccess(resolve, res, options);
+        }
+    });
+};
+function showTabBarRedDot(options) {
+    const res = { errMsg: 'showTabBarRedDot:ok' };
+    return new Promise((resolve) => {
+        eventCenter.trigger('__taroShowTabBarRedDotHandler', {
+            index: options?.index || 0,
+        });
+        callAsyncSuccess(resolve, res, options);
+    });
+}
+function hideTabBarRedDot(options) {
+    const res = { errMsg: 'hideTabBarRedDot:ok' };
+    return new Promise((resolve) => {
+        eventCenter.trigger('__taroHideTabBarRedDotHandler', {
+            index: options?.index || 0,
+        });
+        callAsyncSuccess(resolve, res, options);
+    });
+}
+function setTabBarBadge(options) {
+    const res = { errMsg: 'setTabBarBadge:ok' };
+    return new Promise((resolve) => {
+        const text = options?.text || '';
+        eventCenter.trigger('__taroSetTabBarBadge', {
+            index: options?.index || 0,
+            text: text.replace(/[\u0391-\uFFE5]/g, 'aa').length > 4 ? '...' : text,
+        });
+        callAsyncSuccess(resolve, res, options);
+    });
+}
+function removeTabBarBadge(options) {
+    const res = { errMsg: 'removeTabBarBadge:ok' };
+    return new Promise((resolve) => {
+        eventCenter.trigger('__taroRemoveTabBarBadge', {
+            index: options?.index || 0,
+        });
+        callAsyncSuccess(resolve, res, options);
+    });
+}
+
+/**
+ * 设置窗口大小，该接口仅适用于 PC 平台，使用细则请参见指南
+ */
+const setWindowSize = /* @__PURE__ */ temporarilyNotSupport('setWindowSize');
+/**
+ * 监听窗口尺寸变化事件
+ */
+const onWindowResize = /* @__PURE__ */ temporarilyNotSupport('onWindowResize');
+/**
+ * 取消监听窗口尺寸变化事件
+ */
+const offWindowResize = /* @__PURE__ */ temporarilyNotSupport('offWindowResize');
+const checkIsPictureInPictureActive = /* @__PURE__ */ temporarilyNotSupport('checkIsPictureInPictureActive');
+
 // Worker
 const createWorker = /* @__PURE__ */ temporarilyNotSupport('createWorker');
+
+class IntersectionObserver {
+    constructor(component, options = {}) {
+        this._options = {
+            thresholds: [0],
+            initialRatio: 0,
+            observeAll: false,
+        };
+        this._viewportMargins = {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0
+        };
+        const taro = Current.taro;
+        const page = taro.getCurrentInstance().page;
+        // 兼容小程序原本的 getCurrentInstance()?.page 的写法
+        if (component && component.page === page && component.node) {
+            this._component = component.node;
+        }
+        else {
+            this._component = component || getPageScrollerOrNode(page?.node, page);
+        }
+        Object.assign(this._options, options);
+    }
+    disconnect() {
+        if (this._observerNodes && this._component) {
+            if (this._observerNodes instanceof Array) {
+                this._observerNodes.forEach((n) => {
+                    Current.nativeModule.disconnectObserve(n);
+                });
+            }
+            else {
+                Current.nativeModule.disconnectObserve(this._observerNodes);
+            }
+            if (this._timer) {
+                clearTimeout(this._timer);
+            }
+            this._observerNodes = null;
+        }
+    }
+    observe(targetSelector, callback) {
+        if (!this._component)
+            return;
+        const { observeAll, thresholds, initialRatio } = this._options;
+        const querySelectName = observeAll ? 'querySelectorAll' : 'querySelector';
+        const isComponentHaveSelectFunction = !!this._component[querySelectName];
+        const querySelector = isComponentHaveSelectFunction ? this._component[querySelectName].bind(this._component) : document$1[querySelectName].bind(document$1);
+        const node = querySelector(targetSelector);
+        this._observerNodes = node;
+        if (!node) {
+            callback({
+                errMsg: 'IntersectionObserver.observe:fail cannot find the node for selector.'
+            });
+            return;
+        }
+        const list = node instanceof Array ? node : [node];
+        list.forEach((item) => {
+            Current.nativeModule.createObserve(item, this._viewportMargins, thresholds, initialRatio, (data) => {
+                this._timer = setTimeout(() => {
+                    callback({
+                        id: item.id,
+                        dataset: item.dataset,
+                        time: new Date().getTime(),
+                        ...data
+                    });
+                }, 20);
+            });
+        });
+    }
+    relativeTo() {
+        temporarilyNotSupport('relativeTo')();
+        return this;
+    }
+    relativeToViewport(option) {
+        this._viewportMargins = Object.assign(this._viewportMargins, option);
+        return this;
+    }
+}
+
+class NodesRef {
+    constructor(selector, querySelectorQuery, single) {
+        this._component = querySelectorQuery._component;
+        this._selector = selector;
+        this._selectorQuery = querySelectorQuery;
+        this._single = single;
+    }
+    context(cb) {
+        const { _selector, _component, _single, _selectorQuery } = this;
+        _selectorQuery._push(_selector, _component, _single, { context: !0 }, cb);
+        return _selectorQuery;
+    }
+    node(cb) {
+        const { _selector, _component, _single, _selectorQuery } = this;
+        _selectorQuery._push(_selector, _component, _single, { nodeCanvasType: !0, node: !0 }, cb);
+        return _selectorQuery;
+    }
+    boundingClientRect(cb) {
+        const { _selector, _component, _single, _selectorQuery } = this;
+        _selectorQuery._push(_selector, _component, _single, { id: !0, dataset: !0, rect: !0, size: !0 }, cb);
+        return _selectorQuery;
+    }
+    scrollOffset(cb) {
+        const { _selector, _component, _single, _selectorQuery } = this;
+        _selectorQuery._push(_selector, _component, _single, { id: !0, dataset: !0, scrollOffset: !0 }, cb);
+        return _selectorQuery;
+    }
+    fields(fields, cb) {
+        const { _selector, _component, _single, _selectorQuery } = this;
+        const { id, dataset, rect, size, scrollOffset, properties = [], computedStyle = [], node, nodeCanvasType } = fields;
+        _selectorQuery._push(_selector, _component, _single, {
+            id,
+            dataset,
+            rect,
+            size,
+            scrollOffset,
+            properties,
+            computedStyle,
+            node,
+            nodeCanvasType,
+        }, cb);
+        return _selectorQuery;
+    }
+}
+
+// 从 TaroNode 里找到对应的 fields 内容
+function filter(fields, dom) {
+    if (!dom)
+        return null;
+    const { id, dataset, rect, size, scrollOffset, properties = [], computedStyle = [], nodeCanvasType, node, context } = fields;
+    const res = {};
+    if (nodeCanvasType && node) { // Node节点获取处理
+        const typeName = dom.nodeName;
+        res.node = {
+            id: dom.id,
+            $taroElement: dom
+        };
+        if (/^canvas/i.test(typeName)) {
+            // harmony todo canvas attr type
+            const canvasType = dom._attrs.type || '';
+            res.nodeCanvasType = canvasType;
+            if (/^(2d|webgl)/i.test(canvasType) && dom) {
+                res.node = dom;
+            }
+            else {
+                res.node = null;
+            }
+        }
+        else {
+            // TODO https://developers.weixin.qq.com/miniprogram/dev/component/scroll-view.html
+            // if (/^taro-scroll-view-core/i.test(tagName))
+            res.nodeCanvasType = '';
+            res.node = dom;
+        }
+        return res;
+    }
+    if (id)
+        res.id = dom.id;
+    if (dataset)
+        res.dataset = Object.assign({}, dom.dataset);
+    if (rect || size) {
+        const computedStyle = dom.getComputedStyle();
+        if (rect) {
+            res.top = computedStyle.globalY;
+            res.left = computedStyle.globalX;
+            res.right = res.left + computedStyle.width;
+            res.bottom = res.top + computedStyle.height;
+        }
+        if (size) {
+            res.width = computedStyle.width;
+            res.height = computedStyle.height;
+        }
+    }
+    if (scrollOffset) {
+        // FIXME 更新为新的获取方式获取组件参数
+        const result = Current.nativeModule.getCurrentOffset(dom);
+        if (result) {
+            const { xOffset, yOffset } = result;
+            res.scrollLeft = xOffset;
+            res.scrollTop = yOffset;
+        }
+    }
+    if (properties.length) {
+        properties.forEach(prop => {
+            const attrs = dom._attrs;
+            if (attrs[prop])
+                res[prop] = attrs[prop];
+        });
+    }
+    if (computedStyle.length) {
+        const styles = dom._st;
+        computedStyle.forEach(key => {
+            const value = styles[key];
+            if (value)
+                res[key] = value;
+        });
+    }
+    return res;
+}
+function queryBat(queue, cb) {
+    const result = [];
+    const taro = Current.taro;
+    const page = taro.getCurrentInstance().page;
+    const element = getPageScrollerOrNode(page?.node, page);
+    if (!element)
+        return null;
+    const actions = queue.map((item) => {
+        const { component, selector, single, fields } = item;
+        return new Promise(resolve => {
+            Current.nativeModule.querySelectDOM(component || page.node, selector, !single, (res) => {
+                if (res && res.length > 0) {
+                    if (single) {
+                        const dom = res[0];
+                        result.push(filter(fields, dom));
+                    }
+                    else {
+                        result.push(res.map(dom => {
+                            return filter(fields, dom);
+                        }));
+                    }
+                }
+                resolve();
+            });
+        });
+    });
+    Promise.all(actions).then(() => {
+        cb(result);
+    });
+}
+class SelectorQuery {
+    constructor() {
+        /**
+         * 设置选择器的选取范围
+         * @param component 指定组件
+         * @return selectQuery 返回查询对象
+         */
+        this.in = (component) => {
+            this._component = component;
+            return this;
+        };
+        this._queue = [];
+        this._queueCb = [];
+        // this._component
+    }
+    /**
+     * 在当前页面下选择第一个匹配选择器selector的节点
+     * @param selector
+     * @return nodesRef 返回一个NodesRef 对象实例，可以用于获取节点信息
+     */
+    select(selector) {
+        return new NodesRef(selector, this, true);
+    }
+    /**
+     * 在当前页面下选择匹配选择器selector的所有节点
+     * @param selector
+     */
+    selectAll(selector) {
+        return new NodesRef(selector, this, false);
+    }
+    /**
+     * 选择显示区域。可用于获取显示区域的尺寸、滚动位置等信息
+     */
+    selectViewport() {
+        return new NodesRef('.taro_page', this, true);
+    }
+    exec(cb) {
+        queryBat(this._queue, res => {
+            const _queueCb = this._queueCb;
+            res.forEach((item, index) => {
+                const cb = _queueCb[index];
+                typeof cb === 'function' && cb.call(this, item);
+            });
+            typeof cb === 'function' && cb.call(this, res);
+        });
+        return this;
+    }
+    _push(selector, component, single, fields, callback = null) {
+        this._queue.push({
+            component,
+            selector,
+            single,
+            fields
+        });
+        this._queueCb.push(callback);
+    }
+}
+
+const createSelectorQuery = () => {
+    return new SelectorQuery();
+};
+const createIntersectionObserver = (component, options) => {
+    return new IntersectionObserver(component, options);
+};
+const createMediaQueryObserver = /* @__PURE__ */ temporarilyNotSupport('createMediaQueryObserver');
 
 var apis = /*#__PURE__*/Object.freeze({
   __proto__: null,
@@ -4608,7 +4619,9 @@ var apis = /*#__PURE__*/Object.freeze({
   chooseInvoice: chooseInvoice,
   chooseInvoiceTitle: chooseInvoiceTitle,
   chooseLicensePlate: chooseLicensePlate,
+  chooseLocation: chooseLocation,
   chooseMedia: chooseMedia,
+  choosePoi: choosePoi,
   chooseVideo: chooseVideo,
   clearStorage: clearStorage,
   clearStorageSync: clearStorageSync,
@@ -4684,11 +4697,13 @@ var apis = /*#__PURE__*/Object.freeze({
   getExtConfigSync: getExtConfigSync,
   getFileInfo: getFileInfo,
   getFileSystemManager: getFileSystemManager,
+  getFuzzyLocation: getFuzzyLocation,
   getGroupEnterInfo: getGroupEnterInfo,
   getHCEState: getHCEState,
   getImageInfo: getImageInfo,
   getLaunchOptionsSync: getLaunchOptionsSync,
   getLocalIPAddress: getLocalIPAddress,
+  getLocation: getLocation,
   getLogManager: getLogManager,
   getMenuButtonBoundingClientRect: getMenuButtonBoundingClientRect,
   getNFCAdapter: getNFCAdapter,
@@ -4733,7 +4748,6 @@ var apis = /*#__PURE__*/Object.freeze({
   joinVoIPChat: joinVoIPChat,
   loadFontFace: loadFontFace,
   login: login,
-  logout: logout,
   makeBluetoothPair: makeBluetoothPair,
   makePhoneCall: makePhoneCall,
   navigateBack: navigateBack,
@@ -4768,6 +4782,8 @@ var apis = /*#__PURE__*/Object.freeze({
   offLocalServiceFound: offLocalServiceFound,
   offLocalServiceLost: offLocalServiceLost,
   offLocalServiceResolveFail: offLocalServiceResolveFail,
+  offLocationChange: offLocationChange,
+  offLocationChangeError: offLocationChangeError,
   offMemoryWarning: offMemoryWarning,
   offNetworkStatusChange: offNetworkStatusChange,
   offNetworkWeakChange: offNetworkWeakChange,
@@ -4814,6 +4830,8 @@ var apis = /*#__PURE__*/Object.freeze({
   onLocalServiceFound: onLocalServiceFound,
   onLocalServiceLost: onLocalServiceLost,
   onLocalServiceResolveFail: onLocalServiceResolveFail,
+  onLocationChange: onLocationChange,
+  onLocationChangeError: onLocationChangeError,
   onMemoryWarning: onMemoryWarning,
   onNeedPrivacyAuthorization: onNeedPrivacyAuthorization,
   onNetworkStatusChange: onNetworkStatusChange,
@@ -4841,6 +4859,7 @@ var apis = /*#__PURE__*/Object.freeze({
   openCustomerServiceChat: openCustomerServiceChat,
   openDocument: openDocument,
   openEmbeddedMiniProgram: openEmbeddedMiniProgram,
+  openLocation: openLocation,
   openPrivacyContract: openPrivacyContract,
   openSetting: openSetting,
   openVideoEditor: openVideoEditor,
@@ -4929,6 +4948,8 @@ var apis = /*#__PURE__*/Object.freeze({
   startGyroscope: startGyroscope,
   startHCE: startHCE,
   startLocalServiceDiscovery: startLocalServiceDiscovery,
+  startLocationUpdate: startLocationUpdate,
+  startLocationUpdateBackground: startLocationUpdateBackground,
   startPullDownRefresh: startPullDownRefresh,
   startRecord: startRecord,
   startSoterAuthentication: startSoterAuthentication,
@@ -4942,6 +4963,7 @@ var apis = /*#__PURE__*/Object.freeze({
   stopGyroscope: stopGyroscope,
   stopHCE: stopHCE,
   stopLocalServiceDiscovery: stopLocalServiceDiscovery,
+  stopLocationUpdate: stopLocationUpdate,
   stopPullDownRefresh: stopPullDownRefresh,
   stopRecord: stopRecord,
   stopVoice: stopVoice,
@@ -4985,22 +5007,20 @@ function canIUseWebp() {
     return true;
 }
 function getAppInfo() {
-    var _a;
-    const config = (_a = Current.taro) === null || _a === void 0 ? void 0 : _a.config;
+    const config = Current.taro?.config;
     return {
         platform: "harmony" || PLATFORM_TYPE.HARMONY,
         taroVersion: "4.1.0-alpha.0" || 'unknown',
-        designWidth: config === null || config === void 0 ? void 0 : config.designWidth,
+        designWidth: config?.designWidth,
     };
 }
 function getUIContext() {
-    var _a, _b;
     // @ts-ignore
-    const uiContext = (_b = (_a = Current === null || Current === void 0 ? void 0 : Current.page) === null || _a === void 0 ? void 0 : _a.getUIContext) === null || _b === void 0 ? void 0 : _b.call(_a);
+    const uiContext = Current?.page?.getUIContext?.();
     if (!uiContext)
         return null;
     return uiContext;
 }
 initNativeApi(taro);
 
-export { ENV_TYPE, IntersectionObserver, addCard, addFileToFavorites, addPhoneCalendar, addPhoneContact, addPhoneRepeatCalendar, addVideoToFavorites, arrayBufferToBase64, authPrivateMessage, authorize, authorizeForMiniProgram, base64ToArrayBuffer, batchGetStorage, batchGetStorageSync, batchSetStorage, batchSetStorageSync, canIUse$1 as canIUse, canIUseWebp, canvasGetImageData, canvasPutImageData, canvasToTempFilePath, checkIsAddedToMyMiniProgram, checkIsOpenAccessibility, checkIsPictureInPictureActive, checkIsSoterEnrolledInDevice, checkIsSupportFacialRecognition, checkIsSupportSoterAuthentication, checkSession, chooseAddress, chooseContact, chooseImage, chooseInvoice, chooseInvoiceTitle, chooseLicensePlate, chooseMedia, chooseVideo, clearStorage, clearStorageSync, closeBLEConnection, closeBluetoothAdapter, compressImage, compressVideo, connectSocket, connectWifi, createAnimation, createAudioContext, createBLEConnection, createBLEPeripheralServer, createBufferURL, createCacheManager, createCameraContext, createCanvasContext, createInnerAudioContext, createIntersectionObserver, createLivePlayerContext, createLivePusherContext, createMapContext, createMediaAudioPlayer, createMediaContainer, createMediaQueryObserver, createMediaRecorder, createOffscreenCanvas, createSelectorQuery, createTCPSocket, createUDPSocket, createVideoContext, createVideoDecoder, createWebAudioContext, createWorker, taro as default, disableAlertBeforeUnload, downloadFile, enableAlertBeforeUnload, exitMiniProgram, exitVoIPChat, faceVerifyForPay, getAccountInfoSync, getApp, getAppAuthorizeSetting, getAppBaseInfo, getAppInfo, getAvailableAudioSources, getBLEDeviceCharacteristics, getBLEDeviceRSSI, getBLEDeviceServices, getBLEMTU, getBackgroundAudioManager, getBackgroundAudioPlayerState, getBackgroundFetchData, getBackgroundFetchToken, getBatteryInfo, getBatteryInfoSync, getBeacons, getBluetoothAdapterState, getBluetoothDevices, getChannelsLiveInfo, getChannelsLiveNoticeInfo, getChannelsShareKey, getClipboardData, getConnectedBluetoothDevices, getConnectedWifi, getCurrentPages, getDeviceInfo, getDeviceVoIPList, getEnterOptionsSync, getEnv, getExptInfoSync, getExtConfig, getExtConfigSync, getFileInfo, getFileSystemManager, getGroupEnterInfo, getHCEState, getImageInfo, getLaunchOptionsSync, getLocalIPAddress, getLogManager, getMenuButtonBoundingClientRect, getNFCAdapter, getNetworkType, getPerformance, getPrivacySetting, getRandomValues, getRealtimeLogManager, getRecorderManager, getSavedFileInfo, getSavedFileList, getScreenBrightness, getScreenRecordingState, getSelectedTextRange, getSetting, getShareInfo, getStorage, getStorageInfo, getStorageInfoSync, getStorageSync, getSystemInfo, getSystemInfoSync, getSystemSetting, getUIContext, getUpdateManager, getUserCryptoManager, getUserInfo, getUserProfile, getVideoInfo, getWeRunData, getWifiList, getWindowInfo, hideHomeButton, hideKeyboard, hideLoading, hideNavigationBarLoading, hideShareMenu, hideTabBar, hideTabBarRedDot, hideToast, initNativeApi, initPxTransform, isBluetoothDevicePaired, join1v1Chat, joinVoIPChat, loadFontFace, login, logout, makeBluetoothPair, makePhoneCall, navigateBack, navigateBackMiniProgram, navigateTo, navigateToMiniProgram, notifyBLECharacteristicValueChange, offAccelerometerChange, offAppHide, offAppShow, offAudioInterruptionBegin, offAudioInterruptionEnd, offBLECharacteristicValueChange, offBLEConnectionStateChange, offBLEMTUChange, offBLEPeripheralConnectionStateChanged, offBeaconServiceChange, offBeaconUpdate, offBluetoothAdapterStateChange, offBluetoothDeviceFound, offCompassChange, offCopyUrl, offDeviceMotionChange, offError, offGetWifiList, offGyroscopeChange, offHCEMessage, offKeyboardHeightChange, offLazyLoadError, offLocalServiceDiscoveryStop, offLocalServiceFound, offLocalServiceLost, offLocalServiceResolveFail, offMemoryWarning, offNetworkStatusChange, offNetworkWeakChange, offPageNotFound, offScreenRecordingStateChanged, offThemeChange, offUnhandledRejection, offUserCaptureScreen, offVoIPChatInterrupted, offVoIPChatMembersChanged, offVoIPChatSpeakersChanged, offVoIPChatStateChanged, offVoIPVideoMembersChanged, offWifiConnected, offWifiConnectedWithPartialInfo, offWindowResize, onAccelerometerChange, onAppHide, onAppShow, onAudioInterruptionBegin, onAudioInterruptionEnd, onBLECharacteristicValueChange, onBLEConnectionStateChange, onBLEMTUChange, onBLEPeripheralConnectionStateChanged, onBackgroundAudioPause, onBackgroundAudioPlay, onBackgroundAudioStop, onBackgroundFetchData, onBeaconServiceChange, onBeaconUpdate, onBluetoothAdapterStateChange, onBluetoothDeviceFound, onCompassChange, onCopyUrl, onDeviceMotionChange, onError, onGetWifiList, onGyroscopeChange, onHCEMessage, onKeyboardHeightChange, onLazyLoadError, onLocalServiceDiscoveryStop, onLocalServiceFound, onLocalServiceLost, onLocalServiceResolveFail, onMemoryWarning, onNeedPrivacyAuthorization, onNetworkStatusChange, onNetworkWeakChange, onPageNotFound, onScreenRecordingStateChanged, onThemeChange, onUnhandledRejection, onUserCaptureScreen, onVoIPChatInterrupted, onVoIPChatMembersChanged, onVoIPChatSpeakersChanged, onVoIPChatStateChanged, onVoIPVideoMembersChanged, onWifiConnected, onWifiConnectedWithPartialInfo, onWindowResize, openBluetoothAdapter, openBusinessView, openCard, openChannelsActivity, openChannelsEvent, openChannelsLive, openChannelsUserProfile, openCustomerServiceChat, openDocument, openEmbeddedMiniProgram, openPrivacyContract, openSetting, openVideoEditor, pageScrollTo, pauseBackgroundAudio, pauseVoice, playBackgroundAudio, playVoice, pluginLogin, preloadAssets, preloadSkylineView, preloadWebview, previewImage, previewMedia, pxTransform, pxTransformHelper, reLaunch, readBLECharacteristicValue, redirectTo, removeSavedFile, removeStorage, removeStorageSync, removeTabBarBadge, reportAnalytics, reportEvent, reportMonitor, reportPerformance, request, requestDeviceVoIP, requestOrderPayment, requestPayment, requestPluginPayment, requestSubscribeDeviceMessage, requestSubscribeMessage, requirePlugin$1 as requirePlugin, requirePrivacyAuthorize, reserveChannelsLive, revokeBufferURL, saveFile, saveFileToDisk, saveImageToPhotosAlbum, saveVideoToPhotosAlbum, scanCode, seekBackgroundAudio, sendHCEMessage, sendSms, setBLEMTU, setBackgroundColor, setBackgroundFetchToken, setBackgroundTextStyle, setClipboardData, setEnable1v1Chat, setEnableDebug, setInnerAudioOption, setKeepScreenOn, setNavigationBarColor, setNavigationBarTitle, setScreenBrightness, setStorage, setStorageSync, setTabBarBadge, setTabBarItem, setTabBarStyle, setTopBarText, setVisualEffectOnCapture, setWifiList, setWindowSize, shareFileMessage, shareToWeRun, shareVideoMessage, showActionSheet, showLoading, showModal, showNavigationBarLoading, showRedPackage, showShareImageMenu, showShareMenu, showTabBar, showTabBarRedDot, showToast, startAccelerometer, startBeaconDiscovery, startBluetoothDevicesDiscovery, startCompass, startDeviceMotionListening, startFacialRecognitionVerify, startFacialRecognitionVerifyAndUploadVideo, startGyroscope, startHCE, startLocalServiceDiscovery, startPullDownRefresh, startRecord, startSoterAuthentication, startWifi, stopAccelerometer, stopBackgroundAudio, stopBeaconDiscovery, stopBluetoothDevicesDiscovery, stopCompass, stopDeviceMotionListening, stopGyroscope, stopHCE, stopLocalServiceDiscovery, stopPullDownRefresh, stopRecord, stopVoice, stopWifi, subscribeVoIPVideoMembers, switchTab, triggerTaskPoolMethods, unstable_SetPageIsTextNeedLayout, updatePageSync, updateShareMenu, updateVoIPChatMuteConfig, updateWeChatApp, uploadFile, vibrateLong, vibrateShort, writeBLECharacteristicValue };
+export { ENV_TYPE, IntersectionObserver, addCard, addFileToFavorites, addPhoneCalendar, addPhoneContact, addPhoneRepeatCalendar, addVideoToFavorites, arrayBufferToBase64, authPrivateMessage, authorize, authorizeForMiniProgram, base64ToArrayBuffer, batchGetStorage, batchGetStorageSync, batchSetStorage, batchSetStorageSync, canIUse$1 as canIUse, canIUseWebp, canvasGetImageData, canvasPutImageData, canvasToTempFilePath, checkIsAddedToMyMiniProgram, checkIsOpenAccessibility, checkIsPictureInPictureActive, checkIsSoterEnrolledInDevice, checkIsSupportFacialRecognition, checkIsSupportSoterAuthentication, checkSession, chooseAddress, chooseContact, chooseImage, chooseInvoice, chooseInvoiceTitle, chooseLicensePlate, chooseLocation, chooseMedia, choosePoi, chooseVideo, clearStorage, clearStorageSync, closeBLEConnection, closeBluetoothAdapter, compressImage, compressVideo, connectSocket, connectWifi, createAnimation, createAudioContext, createBLEConnection, createBLEPeripheralServer, createBufferURL, createCacheManager, createCameraContext, createCanvasContext, createInnerAudioContext, createIntersectionObserver, createLivePlayerContext, createLivePusherContext, createMapContext, createMediaAudioPlayer, createMediaContainer, createMediaQueryObserver, createMediaRecorder, createOffscreenCanvas, createSelectorQuery, createTCPSocket, createUDPSocket, createVideoContext, createVideoDecoder, createWebAudioContext, createWorker, taro as default, disableAlertBeforeUnload, downloadFile, enableAlertBeforeUnload, exitMiniProgram, exitVoIPChat, faceVerifyForPay, getAccountInfoSync, getApp, getAppAuthorizeSetting, getAppBaseInfo, getAppInfo, getAvailableAudioSources, getBLEDeviceCharacteristics, getBLEDeviceRSSI, getBLEDeviceServices, getBLEMTU, getBackgroundAudioManager, getBackgroundAudioPlayerState, getBackgroundFetchData, getBackgroundFetchToken, getBatteryInfo, getBatteryInfoSync, getBeacons, getBluetoothAdapterState, getBluetoothDevices, getChannelsLiveInfo, getChannelsLiveNoticeInfo, getChannelsShareKey, getClipboardData, getConnectedBluetoothDevices, getConnectedWifi, getCurrentPages, getDeviceInfo, getDeviceVoIPList, getEnterOptionsSync, getEnv, getExptInfoSync, getExtConfig, getExtConfigSync, getFileInfo, getFileSystemManager, getFuzzyLocation, getGroupEnterInfo, getHCEState, getImageInfo, getLaunchOptionsSync, getLocalIPAddress, getLocation, getLogManager, getMenuButtonBoundingClientRect, getNFCAdapter, getNetworkType, getPerformance, getPrivacySetting, getRandomValues, getRealtimeLogManager, getRecorderManager, getSavedFileInfo, getSavedFileList, getScreenBrightness, getScreenRecordingState, getSelectedTextRange, getSetting, getShareInfo, getStorage, getStorageInfo, getStorageInfoSync, getStorageSync, getSystemInfo, getSystemInfoSync, getSystemSetting, getUIContext, getUpdateManager, getUserCryptoManager, getUserInfo, getUserProfile, getVideoInfo, getWeRunData, getWifiList, getWindowInfo, hideHomeButton, hideKeyboard, hideLoading, hideNavigationBarLoading, hideShareMenu, hideTabBar, hideTabBarRedDot, hideToast, initNativeApi, initPxTransform, isBluetoothDevicePaired, join1v1Chat, joinVoIPChat, loadFontFace, login, makeBluetoothPair, makePhoneCall, navigateBack, navigateBackMiniProgram, navigateTo, navigateToMiniProgram, notifyBLECharacteristicValueChange, offAccelerometerChange, offAppHide, offAppShow, offAudioInterruptionBegin, offAudioInterruptionEnd, offBLECharacteristicValueChange, offBLEConnectionStateChange, offBLEMTUChange, offBLEPeripheralConnectionStateChanged, offBeaconServiceChange, offBeaconUpdate, offBluetoothAdapterStateChange, offBluetoothDeviceFound, offCompassChange, offCopyUrl, offDeviceMotionChange, offError, offGetWifiList, offGyroscopeChange, offHCEMessage, offKeyboardHeightChange, offLazyLoadError, offLocalServiceDiscoveryStop, offLocalServiceFound, offLocalServiceLost, offLocalServiceResolveFail, offLocationChange, offLocationChangeError, offMemoryWarning, offNetworkStatusChange, offNetworkWeakChange, offPageNotFound, offScreenRecordingStateChanged, offThemeChange, offUnhandledRejection, offUserCaptureScreen, offVoIPChatInterrupted, offVoIPChatMembersChanged, offVoIPChatSpeakersChanged, offVoIPChatStateChanged, offVoIPVideoMembersChanged, offWifiConnected, offWifiConnectedWithPartialInfo, offWindowResize, onAccelerometerChange, onAppHide, onAppShow, onAudioInterruptionBegin, onAudioInterruptionEnd, onBLECharacteristicValueChange, onBLEConnectionStateChange, onBLEMTUChange, onBLEPeripheralConnectionStateChanged, onBackgroundAudioPause, onBackgroundAudioPlay, onBackgroundAudioStop, onBackgroundFetchData, onBeaconServiceChange, onBeaconUpdate, onBluetoothAdapterStateChange, onBluetoothDeviceFound, onCompassChange, onCopyUrl, onDeviceMotionChange, onError, onGetWifiList, onGyroscopeChange, onHCEMessage, onKeyboardHeightChange, onLazyLoadError, onLocalServiceDiscoveryStop, onLocalServiceFound, onLocalServiceLost, onLocalServiceResolveFail, onLocationChange, onLocationChangeError, onMemoryWarning, onNeedPrivacyAuthorization, onNetworkStatusChange, onNetworkWeakChange, onPageNotFound, onScreenRecordingStateChanged, onThemeChange, onUnhandledRejection, onUserCaptureScreen, onVoIPChatInterrupted, onVoIPChatMembersChanged, onVoIPChatSpeakersChanged, onVoIPChatStateChanged, onVoIPVideoMembersChanged, onWifiConnected, onWifiConnectedWithPartialInfo, onWindowResize, openBluetoothAdapter, openBusinessView, openCard, openChannelsActivity, openChannelsEvent, openChannelsLive, openChannelsUserProfile, openCustomerServiceChat, openDocument, openEmbeddedMiniProgram, openLocation, openPrivacyContract, openSetting, openVideoEditor, pageScrollTo, pauseBackgroundAudio, pauseVoice, playBackgroundAudio, playVoice, pluginLogin, preloadAssets, preloadSkylineView, preloadWebview, previewImage, previewMedia, pxTransform, pxTransformHelper, reLaunch, readBLECharacteristicValue, redirectTo, removeSavedFile, removeStorage, removeStorageSync, removeTabBarBadge, reportAnalytics, reportEvent, reportMonitor, reportPerformance, request, requestDeviceVoIP, requestOrderPayment, requestPayment, requestPluginPayment, requestSubscribeDeviceMessage, requestSubscribeMessage, requirePlugin$1 as requirePlugin, requirePrivacyAuthorize, reserveChannelsLive, revokeBufferURL, saveFile, saveFileToDisk, saveImageToPhotosAlbum, saveVideoToPhotosAlbum, scanCode, seekBackgroundAudio, sendHCEMessage, sendSms, setBLEMTU, setBackgroundColor, setBackgroundFetchToken, setBackgroundTextStyle, setClipboardData, setEnable1v1Chat, setEnableDebug, setInnerAudioOption, setKeepScreenOn, setNavigationBarColor, setNavigationBarTitle, setScreenBrightness, setStorage, setStorageSync, setTabBarBadge, setTabBarItem, setTabBarStyle, setTopBarText, setVisualEffectOnCapture, setWifiList, setWindowSize, shareFileMessage, shareToWeRun, shareVideoMessage, showActionSheet, showLoading, showModal, showNavigationBarLoading, showRedPackage, showShareImageMenu, showShareMenu, showTabBar, showTabBarRedDot, showToast, startAccelerometer, startBeaconDiscovery, startBluetoothDevicesDiscovery, startCompass, startDeviceMotionListening, startFacialRecognitionVerify, startFacialRecognitionVerifyAndUploadVideo, startGyroscope, startHCE, startLocalServiceDiscovery, startLocationUpdate, startLocationUpdateBackground, startPullDownRefresh, startRecord, startSoterAuthentication, startWifi, stopAccelerometer, stopBackgroundAudio, stopBeaconDiscovery, stopBluetoothDevicesDiscovery, stopCompass, stopDeviceMotionListening, stopGyroscope, stopHCE, stopLocalServiceDiscovery, stopLocationUpdate, stopPullDownRefresh, stopRecord, stopVoice, stopWifi, subscribeVoIPVideoMembers, switchTab, triggerTaskPoolMethods, unstable_SetPageIsTextNeedLayout, updatePageSync, updateShareMenu, updateVoIPChatMuteConfig, updateWeChatApp, uploadFile, vibrateLong, vibrateShort, writeBLECharacteristicValue };

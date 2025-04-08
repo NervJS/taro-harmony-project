@@ -1,22 +1,7 @@
 // @ts-nocheck
-import Taro from "./types";
 import { TFunc, Current, getCurrentInstance, TaroAny } from "../runtime";
-import Taro$0 from "./";
+import Taro from "./types";
 declare namespace apis {
-    /** 获取窗口信息 */
-    const getWindowInfo: typeof Taro.getWindowInfo;
-    /** 获取设备设置 */
-    const getSystemSetting: typeof Taro.getSystemSetting;
-    /** 获取设备设置 */
-    const getDeviceInfo: typeof Taro.getDeviceInfo;
-    /** 获取微信APP基础信息 */
-    const getAppBaseInfo: typeof Taro.getAppBaseInfo;
-    /** 获取微信APP授权设置 */
-    const getAppAuthorizeSetting: typeof Taro.getAppAuthorizeSetting;
-    /* 同步版本 */
-    const getSystemInfoSync: typeof Taro.getSystemInfoSync;
-    /* 异步版本 */
-    const getSystemInfo: typeof Taro.getSystemInfo;
     interface ICallbackResult {
         /** 错误信息 */
         errMsg: string;
@@ -74,6 +59,20 @@ declare namespace apis {
     const preloadWebview: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const preloadSkylineView: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const preloadAssets: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /** 获取窗口信息 */
+    const getWindowInfo: typeof Taro.getWindowInfo;
+    /** 获取设备设置 */
+    const getSystemSetting: typeof Taro.getSystemSetting;
+    /** 获取设备设置 */
+    const getDeviceInfo: typeof Taro.getDeviceInfo;
+    /** 获取微信APP基础信息 */
+    const getAppBaseInfo: typeof Taro.getAppBaseInfo;
+    /** 获取微信APP授权设置 */
+    const getAppAuthorizeSetting: typeof Taro.getAppAuthorizeSetting;
+    /* 同步版本 */
+    const getSystemInfoSync: typeof Taro.getSystemInfoSync;
+    /* 异步版本 */
+    const getSystemInfo: typeof Taro.getSystemInfo;
     // 更新
     const updateWeChatApp: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const getUpdateManager: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
@@ -103,13 +102,18 @@ declare namespace apis {
     /** 创建离屏 canvas 实例 */
     const createOffscreenCanvas: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     /** 创建 canvas 的绘图上下文 CanvasContext 对象 */
+    // export const createCanvasContext = /* @__PURE__ */ temporarilyNotSupport('createOffscreenCanvas')
     const createCanvasContext: (canvasId: string) => any;
     /** 把当前画布指定区域的内容导出生成指定大小的图片 */
-    const canvasToTempFilePath: ({ canvasId, fileType, quality, success, fail, complete, x, y, width, height, destWidth, destHeight }: Taro.canvasToTempFilePath.Option, component?: TaroGeneral.IAnyObject) => Promise<Taro.canvasToTempFilePath.SuccessCallbackResult>;
+    const canvasToTempFilePath: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     /** 将像素数据绘制到画布 */
     const canvasPutImageData: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     /** 获取 canvas 区域隐含的像素数据 */
     const canvasGetImageData: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const reportMonitor: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const reportAnalytics: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const reportEvent: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const getExptInfoSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     /**
      * 停止监听加速度数据。
      */
@@ -126,112 +130,6 @@ declare namespace apis {
      * 取消监听加速度数据事件，参数为空，则取消所有的事件监听
      */
     const offAccelerometerChange: typeof Taro.offAccelerometerChange;
-    /**
-     * 停止监听加速度数据。
-     */
-    const stopGyroscope: typeof Taro.stopGyroscope;
-    /**
-     * 开始监听加速度数据。
-     */
-    const startGyroscope: typeof Taro.startGyroscope;
-    /**
-     * 监听加速度数据事件。频率根据 Taro.startGyroscope() 的 interval 参数。可使用 Taro.stopGyroscope() 停止监听。
-     */
-    const onGyroscopeChange: typeof Taro.onGyroscopeChange;
-    /**
-     * 取消监听加速度数据事件，参数为空，则取消所有的事件监听
-     */
-    const offGyroscopeChange: typeof Taro.offGyroscopeChange;
-    const onKeyboardHeightChange: typeof Taro.onKeyboardHeightChange;
-    const offKeyboardHeightChange: typeof Taro.offKeyboardHeightChange;
-    const hideKeyboard: typeof Taro.hideKeyboard;
-    const ETS_METHODS_TRIGGER_EVENTNAME = "__taroPluginEtsMethodsTrigger";
-    // 折叠屏分割临界宽度， 大于1500视为折叠屏
-    const FOLD_SPLIT_MAX_WIDTH = 1500;
-    function initPxTransform({ designWidth, deviceRatio, baseFontSize, unitPrecision, targetUnit }: {
-        designWidth?: number | undefined;
-        deviceRatio?: Record<string | number, number> | undefined;
-        baseFontSize?: number | undefined;
-        unitPrecision?: number | undefined;
-        targetUnit?: string | undefined;
-    }): void;
-    // Note: 设置为 style 单位时会自动完成设计稿转换，设计开发者调用 API 时也许抹平差异，例如 pageScrollTo[option.offsetTop]
-    function pxTransformHelper(size: number, unit?: string, isNumber?: boolean): number | string;
-    function pxTransform(size: number, designWidth?: number): number | string;
-    type GeneralCallback = (res: any) => void;
-    type FunctionType = (...args: any) => any;
-    interface IAsyncParams<T extends FunctionType = GeneralCallback> {
-        /** 接口调用结束的回调函数（调用成功、失败都会执行） */
-        complete?: GeneralCallback;
-        /** 接口调用失败的回调函数 */
-        fail?: GeneralCallback;
-        /** 接口调用成功的回调函数 */
-        success?: T;
-    }
-    type NormalParamSchema = string[];
-    type ObjectParamSchema = Record<string, string>;
-    type Schema = NormalParamSchema | ObjectParamSchema;
-    interface ValidateParams {
-        <T>(name: string, params: any, schema: Schema): asserts params is T;
-    }
-    function shouldBeObject(target: unknown): {
-        flag: boolean;
-        msg?: undefined;
-    } | {
-        flag: boolean;
-        msg: string;
-    };
-    interface IParameterErrorParam {
-        name?: string;
-        para?: string;
-        correct?: string;
-        wrong?: unknown;
-        level?: "warn" | "error" | "log" | "info" | "debug";
-    }
-    function getParameterError({ name, para, correct, wrong, level }: IParameterErrorParam): string;
-    function upperCaseFirstLetter(string: string): string;
-    function assertType(target: any, type: string, methodName: string, paramName?: string): void;
-    /**
-     * 用于校验方法的参数类型
-     * @param name 方法名称
-     * @param params [array|object] 当前参数
-     * @param schema [array|object] 参数类型规范
-     * @example
-     * ```js
-     * // 例子一：
-     * validateParams(methodA, [key], [string])
-     * // 例子二：
-     * validateParams(methodB, { key: 123 }, { key: number })
-     * ```
-     * @todo 校验可选参数
-     */
-    const validateParams: ValidateParams;
-    function requestPermissions(permissions: string[]): Promise<void>;
-    function object2String(obj: any): string;
-    function temporarilyNotSupport(name: string, recommended?: string): (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    function permanentlyNotSupport(name?: string): (option?: {}, ...args: any[]) => Promise<ICallbackResult & Record<string, unknown>>;
-    /** @deprecated */
-    function callCallbackSuccess<T extends FunctionType>(res: any, options?: IAsyncParams<T>): void;
-    /** @deprecated */
-    function callCallbackFail<T extends FunctionType>(res: any, options?: IAsyncParams<T>): void;
-    /** @deprecated */
-    function callAsyncSuccess<T extends FunctionType>(resolve: any, res: any, options?: IAsyncParams<T>): void;
-    /** @deprecated */
-    function callAsyncFail<T extends FunctionType>(reject: any, res: any, options?: IAsyncParams<T>): void;
-    const getSelectedTextRange: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const getNetworkType: typeof Taro.getNetworkType;
-    /**
-     * 在最近的八次网络请求中, 出现下列三个现象之一则判定弱网。
-     * - 出现三次以上连接超时
-     * - 出现三次 rtt 超过 400
-     * - 出现三次以上的丢包
-     * > 弱网事件通知规则是: 弱网状态变化时立即通知, 状态不变时 30s 内最多通知一次。
-     */
-    const onNetworkWeakChange: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const onNetworkStatusChange: typeof Taro.onNetworkStatusChange;
-    const offNetworkWeakChange: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const offNetworkStatusChange: typeof Taro.offNetworkStatusChange;
-    const getLocalIPAddress: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 无障碍
     const checkIsOpenAccessibility: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 电量
@@ -304,6 +202,22 @@ declare namespace apis {
     const addPhoneContact: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 加密
     const getRandomValues: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /**
+     * 停止监听加速度数据。
+     */
+    const stopGyroscope: typeof Taro.stopGyroscope;
+    /**
+     * 开始监听加速度数据。
+     */
+    const startGyroscope: typeof Taro.startGyroscope;
+    /**
+     * 监听加速度数据事件。频率根据 Taro.startGyroscope() 的 interval 参数。可使用 Taro.stopGyroscope() 停止监听。
+     */
+    const onGyroscopeChange: typeof Taro.onGyroscopeChange;
+    /**
+     * 取消监听加速度数据事件，参数为空，则取消所有的事件监听
+     */
+    const offGyroscopeChange: typeof Taro.offGyroscopeChange;
     // 蓝牙-信标(Beacon)
     const stopBeaconDiscovery: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const startBeaconDiscovery: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
@@ -312,12 +226,29 @@ declare namespace apis {
     const offBeaconUpdate: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const offBeaconServiceChange: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const getBeacons: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const onKeyboardHeightChange: typeof Taro.onKeyboardHeightChange;
+    const offKeyboardHeightChange: typeof Taro.offKeyboardHeightChange;
+    const hideKeyboard: typeof Taro.hideKeyboard;
+    const getSelectedTextRange: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const onMemoryWarning: (listener: any) => void;
     const offMemoryWarning: (listener: any) => void;
     const stopDeviceMotionListening: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const startDeviceMotionListening: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const onDeviceMotionChange: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const offDeviceMotionChange: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const getNetworkType: typeof Taro.getNetworkType;
+    /**
+     * 在最近的八次网络请求中, 出现下列三个现象之一则判定弱网。
+     * - 出现三次以上连接超时
+     * - 出现三次 rtt 超过 400
+     * - 出现三次以上的丢包
+     * > 弱网事件通知规则是: 弱网状态变化时立即通知, 状态不变时 30s 内最多通知一次。
+     */
+    const onNetworkWeakChange: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const onNetworkStatusChange: typeof Taro.onNetworkStatusChange;
+    const offNetworkWeakChange: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const offNetworkStatusChange: typeof Taro.offNetworkStatusChange;
+    const getLocalIPAddress: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // NFC
     const stopHCE: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const startHCE: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
@@ -356,6 +287,22 @@ declare namespace apis {
     const getWifiList: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const getConnectedWifi: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const connectWifi: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    // 第三方平台
+    const getExtConfigSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const getExtConfig: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    function validateSavedFilePath(savedFilePath: string): void;
+    function getFileSystemManager(): Taro.FileSystemManager;
+    const saveFileToDisk: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /**
+     * HarmonyOS 不支持 showMenu 选项，并且 type 目前仅支持 *，详情参见：
+     * https://developer.harmonyos.com/cn/docs/documentation/doc-references/js-apis-document-0000001168936589#section9616125953711
+     */
+    function openDocument(option: Taro.openDocument.Option): Promise<any>;
+    function saveFile(option: Taro.saveFile.Option): Promise<any>;
+    function removeSavedFile(option: Taro.removeSavedFile.Option): Promise<any>;
+    function getFileInfo(option: Taro.getFileInfo.Option): Promise<Taro.getFileInfo.SuccessCallbackResult | Taro.getFileInfo.FailCallbackResult>;
+    function getSavedFileList(option?: Taro.getSavedFileList.Option): Promise<Taro.getSavedFileList.SuccessCallbackResult>;
+    function getSavedFileInfo(option: Taro.getSavedFileInfo.Option): Promise<Taro.getSavedFileInfo.SuccessCallbackResult>;
     const ENV_TYPE: {
         WEAPP: string;
         SWAN: string;
@@ -383,22 +330,26 @@ declare namespace apis {
         fail?: (res: TaroAny) => void;
         success?: (res: TaroAny) => void;
     }) => Promise<unknown>;
-    // TODO: 扩展支持预览video
-    const previewMedia: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const chooseMedia: typeof Taro.chooseMedia;
-    const previewImage: typeof Taro.previewImage;
-    const getImageInfo: typeof Taro.getImageInfo;
-    const compressImage: typeof Taro.compressImage;
-    const chooseImage: typeof Taro.chooseImage;
-    const saveImageToPhotosAlbum: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const createVideoContext: typeof Taro.createVideoContext;
-    // TODO: 1.返回属性补全
-    // TODO: 2.只支持从相册选择，补充摄像头拍摄功能，需要HarmonyOS提供选择组件
-    const chooseVideo: typeof Taro.chooseVideo;
-    const compressVideo: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const getVideoInfo: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const openVideoEditor: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const saveVideoToPhotosAlbum: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    // 位置
+    const stopLocationUpdate: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const startLocationUpdateBackground: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const startLocationUpdate: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const openLocation: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    // TODO：增加参数校验
+    // const getLocationSchema = {
+    //   type: 'String',
+    //   altitude: 'Boolean',
+    //   ishighAccuracy: 'Boolean',
+    //   highAccuracyExpireTime: 'number'
+    // }
+    const getLocation: typeof Taro.getLocation;
+    const onLocationChange: typeof Taro.onLocationChange;
+    const offLocationChange: typeof Taro.offLocationChange;
+    const onLocationChangeError: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const offLocationChangeError: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const choosePoi: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const chooseLocation: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const getFuzzyLocation: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 音频
     const stopVoice: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const setInnerAudioOption: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
@@ -426,6 +377,14 @@ declare namespace apis {
      */
     const getBackgroundAudioManager: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const createCameraContext: typeof Taro.createCameraContext;
+    // TODO: 扩展支持预览video
+    const previewMedia: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const chooseMedia: typeof Taro.chooseMedia;
+    const previewImage: typeof Taro.previewImage;
+    const getImageInfo: typeof Taro.getImageInfo;
+    const compressImage: typeof Taro.compressImage;
+    const chooseImage: typeof Taro.chooseImage;
+    const saveImageToPhotosAlbum: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 实时音视频
     const createLivePusherContext: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const createLivePlayerContext: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
@@ -437,6 +396,14 @@ declare namespace apis {
     const stopRecord: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const startRecord: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const getRecorderManager: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const createVideoContext: typeof Taro.createVideoContext;
+    // TODO: 1.返回属性补全
+    // TODO: 2.只支持从相册选择，补充摄像头拍摄功能，需要HarmonyOS提供选择组件
+    const chooseVideo: typeof Taro.chooseVideo;
+    const compressVideo: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const getVideoInfo: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const openVideoEditor: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const saveVideoToPhotosAlbum: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 视频解码器
     const createVideoDecoder: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 音视频合成
@@ -458,10 +425,13 @@ declare namespace apis {
     const joinVoIPChat: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const join1v1Chat: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const exitVoIPChat: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    // 跳转
+    const openEmbeddedMiniProgram: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const navigateToMiniProgram: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const navigateBackMiniProgram: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const exitMiniProgram: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const openBusinessView: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const downloadFile: typeof Taro.uploadFile;
-    type TRequest = typeof Taro.request;
-    const request: TRequest;
-    const uploadFile: typeof Taro.uploadFile;
     // mDNS
     const stopLocalServiceDiscovery: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const startLocalServiceDiscovery: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
@@ -473,15 +443,14 @@ declare namespace apis {
     const offLocalServiceLost: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const offLocalServiceFound: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const offLocalServiceDiscoveryStop: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    type TRequest = typeof Taro.request;
+    const request: TRequest;
     // TCP 通信
     const createTCPSocket: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // UDP 通信
     const createUDPSocket: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const uploadFile: typeof Taro.uploadFile;
     const connectSocket: typeof Taro.connectSocket;
-    const pluginLogin: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const login: typeof Taro.login;
-    const logout: () => void;
-    const checkSession: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 帐号信息
     const getAccountInfoSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 收货地址
@@ -521,6 +490,10 @@ declare namespace apis {
     const chooseInvoice: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 车牌
     const chooseLicensePlate: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    // 帐号信息
+    const pluginLogin: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const login: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const checkSession: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 我的小程序
     const checkIsAddedToMyMiniProgram: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 隐私信息授权
@@ -567,22 +540,59 @@ declare namespace apis {
     // 微信运动
     const shareToWeRun: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const getWeRunData: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    // 支付
+    const requestPayment: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const requestPluginPayment: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const requestOrderPayment: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const navigateTo: typeof Taro.navigateTo;
     const redirectTo: typeof Taro.redirectTo;
     const navigateBack: typeof Taro.navigateBack;
     const reLaunch: typeof Taro.reLaunch;
     const switchTab: typeof Taro.switchTab;
-    function showToast(options: any): Promise<unknown>;
-    function showModal(options: any): Promise<unknown>;
-    function showActionSheet(options: any): Promise<unknown>;
-    const hideToast: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const showLoading: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const hideLoading: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const enableAlertBeforeUnload: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const disableAlertBeforeUnload: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    // 覆盖showModal
-    function showModal$0(options: any): Promise<unknown>;
-    const pageScrollTo: typeof Taro$0.pageScrollTo;
+    // 转发
+    /** 更新转发属性 */
+    const updateShareMenu: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /** 显示当前页面的转发按钮 */
+    const showShareMenu: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /** 打开分享图片弹窗，可以将图片发送给朋友、收藏或下载 */
+    const showShareImageMenu: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /** 转发视频到聊天 */
+    const shareVideoMessage: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /** 转发文件到聊天 */
+    const shareFileMessage: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /** 监听用户点击右上角菜单的「复制链接」按钮时触发的事件 */
+    const onCopyUrl: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /** 移除用户点击右上角菜单的「复制链接」按钮时触发的事件的监听函数 */
+    const offCopyUrl: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /** 隐藏当前页面的转发按钮 */
+    const hideShareMenu: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /** 获取转发详细信息 */
+    const getShareInfo: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    /** 验证私密消息。 */
+    const authPrivateMessage: (option?: {}, ...args: any[]) => Promise<ICallbackResult & Record<string, unknown>>;
+    function getStorage<T = any>(options: Taro.getStorage.Option<T>): Promise<unknown> | undefined;
+    function setStorage(options: Taro.setStorage.Option): Promise<unknown> | undefined;
+    function removeStorage(options: Taro.removeStorage.Option): Promise<unknown> | undefined;
+    const getStorageInfoSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const getStorageInfo: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const createBufferURL: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const revokeBufferURL: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const batchSetStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const batchSetStorage: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const batchGetStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const batchGetStorage: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const clearStorage: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const getStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const setStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const clearStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const removeStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    // 周期性更新
+    const setBackgroundFetchToken: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const onBackgroundFetchData: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const getBackgroundFetchToken: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const getBackgroundFetchData: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    // 周期性更新
+    const createCacheManager: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     interface IAnimationAttr {
         duration: number;
         delay: number;
@@ -642,9 +652,17 @@ declare namespace apis {
     }
     const createAnimation: (option: Taro.createAnimation.Option) => Animation;
     const setBackgroundTextStyle: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    function setBackgroundColor(options: Taro$0.setBackgroundColor.Option): Promise<unknown>;
+    function setBackgroundColor(options: Taro.setBackgroundColor.Option): Promise<unknown>;
     // 字体
     const loadFontFace: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    function showToast(options: any): Promise<unknown>;
+    function showModal(options: any): Promise<unknown>;
+    function showActionSheet(options: any): Promise<unknown>;
+    const hideToast: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const showLoading: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const hideLoading: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const enableAlertBeforeUnload: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    const disableAlertBeforeUnload: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     // 菜单
     const getMenuButtonBoundingClientRect: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const setNavigationBarTitle: typeof Taro.setNavigationBarTitle;
@@ -654,6 +672,7 @@ declare namespace apis {
     const hideHomeButton: typeof Taro.hideHomeButton;
     const startPullDownRefresh: typeof Taro.startPullDownRefresh;
     const stopPullDownRefresh: typeof Taro.stopPullDownRefresh;
+    const pageScrollTo: typeof Taro.pageScrollTo;
     // 置顶
     const setTopBarText: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     const showTabBar: (option?: Taro.showTabBar.Option | undefined) => Promise<TaroGeneral.CallbackResult>;
@@ -677,6 +696,8 @@ declare namespace apis {
      */
     const offWindowResize: typeof Taro.offWindowResize;
     const checkIsPictureInPictureActive: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
+    // Worker
+    const createWorker: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     class IntersectionObserver {
         // 自定义组件实例
         private _component;
@@ -754,82 +775,6 @@ declare namespace apis {
     const createSelectorQuery: () => SelectorQuery;
     const createIntersectionObserver: typeof Taro.createIntersectionObserver;
     const createMediaQueryObserver: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const reportMonitor: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const reportAnalytics: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const reportEvent: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const getExptInfoSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    // 第三方平台
-    const getExtConfigSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const getExtConfig: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    function validateSavedFilePath(savedFilePath: string): void;
-    function getFileSystemManager(): Taro.FileSystemManager;
-    const saveFileToDisk: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    /**
-     * HarmonyOS 不支持 showMenu 选项，并且 type 目前仅支持 *，详情参见：
-     * https://developer.harmonyos.com/cn/docs/documentation/doc-references/js-apis-document-0000001168936589#section9616125953711
-     */
-    function openDocument(option: Taro.openDocument.Option): Promise<any>;
-    function saveFile(option: Taro.saveFile.Option): Promise<any>;
-    function removeSavedFile(option: Taro.removeSavedFile.Option): Promise<any>;
-    function getFileInfo(option: Taro.getFileInfo.Option): Promise<Taro.getFileInfo.SuccessCallbackResult | Taro.getFileInfo.FailCallbackResult>;
-    function getSavedFileList(option?: Taro.getSavedFileList.Option): Promise<Taro.getSavedFileList.SuccessCallbackResult>;
-    function getSavedFileInfo(option: Taro.getSavedFileInfo.Option): Promise<Taro.getSavedFileInfo.SuccessCallbackResult>;
-    // 跳转
-    const openEmbeddedMiniProgram: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const navigateToMiniProgram: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const navigateBackMiniProgram: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const exitMiniProgram: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const openBusinessView: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    // 支付
-    const requestPayment: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const requestPluginPayment: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const requestOrderPayment: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    // 转发
-    /** 更新转发属性 */
-    const updateShareMenu: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    /** 显示当前页面的转发按钮 */
-    const showShareMenu: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    /** 打开分享图片弹窗，可以将图片发送给朋友、收藏或下载 */
-    const showShareImageMenu: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    /** 转发视频到聊天 */
-    const shareVideoMessage: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    /** 转发文件到聊天 */
-    const shareFileMessage: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    /** 监听用户点击右上角菜单的「复制链接」按钮时触发的事件 */
-    const onCopyUrl: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    /** 移除用户点击右上角菜单的「复制链接」按钮时触发的事件的监听函数 */
-    const offCopyUrl: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    /** 隐藏当前页面的转发按钮 */
-    const hideShareMenu: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    /** 获取转发详细信息 */
-    const getShareInfo: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    /** 验证私密消息。 */
-    const authPrivateMessage: (option?: {}, ...args: any[]) => Promise<ICallbackResult & Record<string, unknown>>;
-    function getStorage<T = any>(options: Taro.getStorage.Option<T>): Promise<unknown> | undefined;
-    function setStorage(options: Taro.setStorage.Option): Promise<unknown> | undefined;
-    function removeStorage(options: Taro.removeStorage.Option): Promise<unknown> | undefined;
-    const getStorageInfoSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const getStorageInfo: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const createBufferURL: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const revokeBufferURL: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const batchSetStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const batchSetStorage: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const batchGetStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const batchGetStorage: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const clearStorage: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const getStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const setStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const clearStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const removeStorageSync: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    // 周期性更新
-    const setBackgroundFetchToken: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const onBackgroundFetchData: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const getBackgroundFetchToken: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    const getBackgroundFetchData: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    // 周期性更新
-    const createCacheManager: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
-    // Worker
-    const createWorker: (option?: {}, ...args: any[]) => Promise<Partial<ICallbackResult> & Record<string, unknown> & ICallbackResult>;
     export { eventCenter, Events, History, nextTick } from "../runtime";
 }
 declare const taro: typeof apis;
@@ -852,5 +797,5 @@ declare function getAppInfo(): {
     designWidth: any;
 };
 declare function getUIContext(): any;
-export { taro as default, initNativeApi, getApp, initPxTransform, pxTransformHelper, pxTransform, canIUseWebp, getAppInfo, getUIContext, getWindowInfo, getSystemSetting, getDeviceInfo, getAppBaseInfo, getAppAuthorizeSetting, getSystemInfoSync, getSystemInfo, canIUse, arrayBufferToBase64, base64ToArrayBuffer, getUserCryptoManager, setEnableDebug, getRealtimeLogManager, getLogManager, reportPerformance, getPerformance, preloadWebview, preloadSkylineView, preloadAssets, updateWeChatApp, getUpdateManager, onUnhandledRejection, onThemeChange, onPageNotFound, onLazyLoadError, onError, onAudioInterruptionEnd, onAudioInterruptionBegin, onAppShow, onAppHide, offUnhandledRejection, offThemeChange, offPageNotFound, offLazyLoadError, offError, offAudioInterruptionEnd, offAudioInterruptionBegin, offAppShow, offAppHide, getLaunchOptionsSync, getEnterOptionsSync, createOffscreenCanvas, createCanvasContext, canvasToTempFilePath, canvasPutImageData, canvasGetImageData, stopAccelerometer, startAccelerometer, onAccelerometerChange, offAccelerometerChange, stopGyroscope, startGyroscope, onGyroscopeChange, offGyroscopeChange, onKeyboardHeightChange, offKeyboardHeightChange, hideKeyboard, getSelectedTextRange, getNetworkType, onNetworkWeakChange, onNetworkStatusChange, offNetworkWeakChange, offNetworkStatusChange, getLocalIPAddress, checkIsOpenAccessibility, getBatteryInfoSync, getBatteryInfo, stopBluetoothDevicesDiscovery, startBluetoothDevicesDiscovery, openBluetoothAdapter, onBluetoothDeviceFound, onBluetoothAdapterStateChange, offBluetoothDeviceFound, offBluetoothAdapterStateChange, makeBluetoothPair, isBluetoothDevicePaired, getConnectedBluetoothDevices, getBluetoothDevices, getBluetoothAdapterState, closeBluetoothAdapter, writeBLECharacteristicValue, setBLEMTU, readBLECharacteristicValue, onBLEMTUChange, onBLEConnectionStateChange, onBLECharacteristicValueChange, offBLEMTUChange, offBLEConnectionStateChange, offBLECharacteristicValueChange, notifyBLECharacteristicValueChange, getBLEMTU, getBLEDeviceServices, getBLEDeviceRSSI, getBLEDeviceCharacteristics, createBLEConnection, closeBLEConnection, onBLEPeripheralConnectionStateChanged, offBLEPeripheralConnectionStateChanged, createBLEPeripheralServer, addPhoneRepeatCalendar, addPhoneCalendar, setClipboardData, getClipboardData, stopCompass, startCompass, onCompassChange, offCompassChange, chooseContact, addPhoneContact, getRandomValues, stopBeaconDiscovery, startBeaconDiscovery, onBeaconUpdate, onBeaconServiceChange, offBeaconUpdate, offBeaconServiceChange, getBeacons, onMemoryWarning, offMemoryWarning, stopDeviceMotionListening, startDeviceMotionListening, onDeviceMotionChange, offDeviceMotionChange, stopHCE, startHCE, sendHCEMessage, onHCEMessage, offHCEMessage, getNFCAdapter, getHCEState, makePhoneCall, scanCode, setVisualEffectOnCapture, setScreenBrightness, setKeepScreenOn, onUserCaptureScreen, offUserCaptureScreen, getScreenBrightness, onScreenRecordingStateChanged, offScreenRecordingStateChanged, getScreenRecordingState, sendSms, vibrateLong, vibrateShort, stopWifi, startWifi, setWifiList, onWifiConnectedWithPartialInfo, onWifiConnected, onGetWifiList, offWifiConnectedWithPartialInfo, offWifiConnected, offGetWifiList, getWifiList, getConnectedWifi, connectWifi, ENV_TYPE, getEnv, getCurrentPages, Current, getCurrentInstance, requirePlugin, updatePageSync, unstable_SetPageIsTextNeedLayout, triggerTaskPoolMethods, previewMedia, chooseMedia, previewImage, getImageInfo, compressImage, chooseImage, saveImageToPhotosAlbum, createVideoContext, chooseVideo, compressVideo, getVideoInfo, openVideoEditor, saveVideoToPhotosAlbum, stopVoice, setInnerAudioOption, playVoice, pauseVoice, getAvailableAudioSources, createWebAudioContext, createMediaAudioPlayer, createInnerAudioContext, createAudioContext, stopBackgroundAudio, seekBackgroundAudio, playBackgroundAudio, pauseBackgroundAudio, onBackgroundAudioStop, onBackgroundAudioPlay, onBackgroundAudioPause, getBackgroundAudioPlayerState, getBackgroundAudioManager, createCameraContext, createLivePusherContext, createLivePlayerContext, createMapContext, createMediaRecorder, stopRecord, startRecord, getRecorderManager, createVideoDecoder, createMediaContainer, updateVoIPChatMuteConfig, subscribeVoIPVideoMembers, setEnable1v1Chat, onVoIPVideoMembersChanged, onVoIPChatStateChanged, onVoIPChatSpeakersChanged, onVoIPChatMembersChanged, onVoIPChatInterrupted, offVoIPChatSpeakersChanged, offVoIPVideoMembersChanged, offVoIPChatStateChanged, offVoIPChatMembersChanged, offVoIPChatInterrupted, joinVoIPChat, join1v1Chat, exitVoIPChat, downloadFile, request, uploadFile, stopLocalServiceDiscovery, startLocalServiceDiscovery, onLocalServiceResolveFail, onLocalServiceLost, onLocalServiceFound, onLocalServiceDiscoveryStop, offLocalServiceResolveFail, offLocalServiceLost, offLocalServiceFound, offLocalServiceDiscoveryStop, createTCPSocket, createUDPSocket, connectSocket, pluginLogin, login, logout, checkSession, getAccountInfoSync, chooseAddress, authorizeForMiniProgram, authorize, openCard, addCard, reserveChannelsLive, openChannelsUserProfile, openChannelsLive, openChannelsEvent, openChannelsActivity, getChannelsShareKey, getChannelsLiveNoticeInfo, getChannelsLiveInfo, openCustomerServiceChat, requestDeviceVoIP, getDeviceVoIPList, checkIsSupportFacialRecognition, startFacialRecognitionVerify, startFacialRecognitionVerifyAndUploadVideo, faceVerifyForPay, addVideoToFavorites, addFileToFavorites, getGroupEnterInfo, chooseInvoiceTitle, chooseInvoice, chooseLicensePlate, checkIsAddedToMyMiniProgram, requirePrivacyAuthorize, openPrivacyContract, onNeedPrivacyAuthorization, getPrivacySetting, showRedPackage, openSetting, getSetting, startSoterAuthentication, checkIsSupportSoterAuthentication, checkIsSoterEnrolledInDevice, requestSubscribeMessage, requestSubscribeDeviceMessage, getUserInfo, getUserProfile, shareToWeRun, getWeRunData, navigateTo, redirectTo, navigateBack, reLaunch, switchTab, showToast, showModal, showActionSheet, hideToast, showLoading, hideLoading, enableAlertBeforeUnload, disableAlertBeforeUnload, pageScrollTo, createAnimation, setBackgroundTextStyle, setBackgroundColor, loadFontFace, getMenuButtonBoundingClientRect, setNavigationBarTitle, setNavigationBarColor, showNavigationBarLoading, hideNavigationBarLoading, hideHomeButton, startPullDownRefresh, stopPullDownRefresh, setTopBarText, showTabBar, hideTabBar, setTabBarStyle, setTabBarItem, showTabBarRedDot, hideTabBarRedDot, setTabBarBadge, removeTabBarBadge, setWindowSize, onWindowResize, offWindowResize, checkIsPictureInPictureActive, createSelectorQuery, createIntersectionObserver, createMediaQueryObserver, IntersectionObserver, reportMonitor, reportAnalytics, reportEvent, getExptInfoSync, getExtConfigSync, getExtConfig, saveFileToDisk, openDocument, saveFile, removeSavedFile, getFileInfo, getSavedFileList, getSavedFileInfo, getFileSystemManager, openEmbeddedMiniProgram, navigateToMiniProgram, navigateBackMiniProgram, exitMiniProgram, openBusinessView, requestPayment, requestPluginPayment, requestOrderPayment, updateShareMenu, showShareMenu, showShareImageMenu, shareVideoMessage, shareFileMessage, onCopyUrl, offCopyUrl, hideShareMenu, getShareInfo, authPrivateMessage, getStorage, setStorage, removeStorage, getStorageInfoSync, getStorageInfo, createBufferURL, revokeBufferURL, batchSetStorageSync, batchSetStorage, batchGetStorageSync, batchGetStorage, clearStorage, getStorageSync, setStorageSync, clearStorageSync, removeStorageSync, setBackgroundFetchToken, onBackgroundFetchData, getBackgroundFetchToken, getBackgroundFetchData, createCacheManager, createWorker };
+export { taro as default, initNativeApi, getApp, initPxTransform, pxTransformHelper, pxTransform, canIUseWebp, getAppInfo, getUIContext, canIUse, arrayBufferToBase64, base64ToArrayBuffer, getUserCryptoManager, setEnableDebug, getRealtimeLogManager, getLogManager, reportPerformance, getPerformance, preloadWebview, preloadSkylineView, preloadAssets, getWindowInfo, getSystemSetting, getDeviceInfo, getAppBaseInfo, getAppAuthorizeSetting, getSystemInfoSync, getSystemInfo, updateWeChatApp, getUpdateManager, onUnhandledRejection, onThemeChange, onPageNotFound, onLazyLoadError, onError, onAudioInterruptionEnd, onAudioInterruptionBegin, onAppShow, onAppHide, offUnhandledRejection, offThemeChange, offPageNotFound, offLazyLoadError, offError, offAudioInterruptionEnd, offAudioInterruptionBegin, offAppShow, offAppHide, getLaunchOptionsSync, getEnterOptionsSync, createOffscreenCanvas, createCanvasContext, canvasToTempFilePath, canvasPutImageData, canvasGetImageData, reportMonitor, reportAnalytics, reportEvent, getExptInfoSync, stopAccelerometer, startAccelerometer, onAccelerometerChange, offAccelerometerChange, checkIsOpenAccessibility, getBatteryInfoSync, getBatteryInfo, stopBluetoothDevicesDiscovery, startBluetoothDevicesDiscovery, openBluetoothAdapter, onBluetoothDeviceFound, onBluetoothAdapterStateChange, offBluetoothDeviceFound, offBluetoothAdapterStateChange, makeBluetoothPair, isBluetoothDevicePaired, getConnectedBluetoothDevices, getBluetoothDevices, getBluetoothAdapterState, closeBluetoothAdapter, writeBLECharacteristicValue, setBLEMTU, readBLECharacteristicValue, onBLEMTUChange, onBLEConnectionStateChange, onBLECharacteristicValueChange, offBLEMTUChange, offBLEConnectionStateChange, offBLECharacteristicValueChange, notifyBLECharacteristicValueChange, getBLEMTU, getBLEDeviceServices, getBLEDeviceRSSI, getBLEDeviceCharacteristics, createBLEConnection, closeBLEConnection, onBLEPeripheralConnectionStateChanged, offBLEPeripheralConnectionStateChanged, createBLEPeripheralServer, addPhoneRepeatCalendar, addPhoneCalendar, setClipboardData, getClipboardData, stopCompass, startCompass, onCompassChange, offCompassChange, chooseContact, addPhoneContact, getRandomValues, stopGyroscope, startGyroscope, onGyroscopeChange, offGyroscopeChange, stopBeaconDiscovery, startBeaconDiscovery, onBeaconUpdate, onBeaconServiceChange, offBeaconUpdate, offBeaconServiceChange, getBeacons, onKeyboardHeightChange, offKeyboardHeightChange, hideKeyboard, getSelectedTextRange, onMemoryWarning, offMemoryWarning, stopDeviceMotionListening, startDeviceMotionListening, onDeviceMotionChange, offDeviceMotionChange, getNetworkType, onNetworkWeakChange, onNetworkStatusChange, offNetworkWeakChange, offNetworkStatusChange, getLocalIPAddress, stopHCE, startHCE, sendHCEMessage, onHCEMessage, offHCEMessage, getNFCAdapter, getHCEState, makePhoneCall, scanCode, setVisualEffectOnCapture, setScreenBrightness, setKeepScreenOn, onUserCaptureScreen, offUserCaptureScreen, getScreenBrightness, onScreenRecordingStateChanged, offScreenRecordingStateChanged, getScreenRecordingState, sendSms, vibrateLong, vibrateShort, stopWifi, startWifi, setWifiList, onWifiConnectedWithPartialInfo, onWifiConnected, onGetWifiList, offWifiConnectedWithPartialInfo, offWifiConnected, offGetWifiList, getWifiList, getConnectedWifi, connectWifi, getExtConfigSync, getExtConfig, saveFileToDisk, openDocument, saveFile, removeSavedFile, getFileInfo, getSavedFileList, getSavedFileInfo, getFileSystemManager, ENV_TYPE, getEnv, getCurrentPages, Current, getCurrentInstance, requirePlugin, updatePageSync, unstable_SetPageIsTextNeedLayout, triggerTaskPoolMethods, stopLocationUpdate, startLocationUpdateBackground, startLocationUpdate, openLocation, getLocation, onLocationChange, offLocationChange, onLocationChangeError, offLocationChangeError, choosePoi, chooseLocation, getFuzzyLocation, stopVoice, setInnerAudioOption, playVoice, pauseVoice, getAvailableAudioSources, createWebAudioContext, createMediaAudioPlayer, createInnerAudioContext, createAudioContext, stopBackgroundAudio, seekBackgroundAudio, playBackgroundAudio, pauseBackgroundAudio, onBackgroundAudioStop, onBackgroundAudioPlay, onBackgroundAudioPause, getBackgroundAudioPlayerState, getBackgroundAudioManager, createCameraContext, previewMedia, chooseMedia, previewImage, getImageInfo, compressImage, chooseImage, saveImageToPhotosAlbum, createLivePusherContext, createLivePlayerContext, createMapContext, createMediaRecorder, stopRecord, startRecord, getRecorderManager, createVideoContext, chooseVideo, compressVideo, getVideoInfo, openVideoEditor, saveVideoToPhotosAlbum, createVideoDecoder, createMediaContainer, updateVoIPChatMuteConfig, subscribeVoIPVideoMembers, setEnable1v1Chat, onVoIPVideoMembersChanged, onVoIPChatStateChanged, onVoIPChatSpeakersChanged, onVoIPChatMembersChanged, onVoIPChatInterrupted, offVoIPChatSpeakersChanged, offVoIPVideoMembersChanged, offVoIPChatStateChanged, offVoIPChatMembersChanged, offVoIPChatInterrupted, joinVoIPChat, join1v1Chat, exitVoIPChat, openEmbeddedMiniProgram, navigateToMiniProgram, navigateBackMiniProgram, exitMiniProgram, openBusinessView, downloadFile, stopLocalServiceDiscovery, startLocalServiceDiscovery, onLocalServiceResolveFail, onLocalServiceLost, onLocalServiceFound, onLocalServiceDiscoveryStop, offLocalServiceResolveFail, offLocalServiceLost, offLocalServiceFound, offLocalServiceDiscoveryStop, request, createTCPSocket, createUDPSocket, uploadFile, connectSocket, getAccountInfoSync, chooseAddress, authorizeForMiniProgram, authorize, openCard, addCard, reserveChannelsLive, openChannelsUserProfile, openChannelsLive, openChannelsEvent, openChannelsActivity, getChannelsShareKey, getChannelsLiveNoticeInfo, getChannelsLiveInfo, openCustomerServiceChat, requestDeviceVoIP, getDeviceVoIPList, checkIsSupportFacialRecognition, startFacialRecognitionVerify, startFacialRecognitionVerifyAndUploadVideo, faceVerifyForPay, addVideoToFavorites, addFileToFavorites, getGroupEnterInfo, chooseInvoiceTitle, chooseInvoice, chooseLicensePlate, pluginLogin, login, checkSession, checkIsAddedToMyMiniProgram, requirePrivacyAuthorize, openPrivacyContract, onNeedPrivacyAuthorization, getPrivacySetting, showRedPackage, openSetting, getSetting, startSoterAuthentication, checkIsSupportSoterAuthentication, checkIsSoterEnrolledInDevice, requestSubscribeMessage, requestSubscribeDeviceMessage, getUserInfo, getUserProfile, shareToWeRun, getWeRunData, requestPayment, requestPluginPayment, requestOrderPayment, navigateTo, redirectTo, navigateBack, reLaunch, switchTab, updateShareMenu, showShareMenu, showShareImageMenu, shareVideoMessage, shareFileMessage, onCopyUrl, offCopyUrl, hideShareMenu, getShareInfo, authPrivateMessage, getStorage, setStorage, removeStorage, getStorageInfoSync, getStorageInfo, createBufferURL, revokeBufferURL, batchSetStorageSync, batchSetStorage, batchGetStorageSync, batchGetStorage, clearStorage, getStorageSync, setStorageSync, clearStorageSync, removeStorageSync, setBackgroundFetchToken, onBackgroundFetchData, getBackgroundFetchToken, getBackgroundFetchData, createCacheManager, createAnimation, setBackgroundTextStyle, setBackgroundColor, loadFontFace, showToast, showModal, showActionSheet, hideToast, showLoading, hideLoading, enableAlertBeforeUnload, disableAlertBeforeUnload, getMenuButtonBoundingClientRect, setNavigationBarTitle, setNavigationBarColor, showNavigationBarLoading, hideNavigationBarLoading, hideHomeButton, startPullDownRefresh, stopPullDownRefresh, pageScrollTo, setTopBarText, showTabBar, hideTabBar, setTabBarStyle, setTabBarItem, showTabBarRedDot, hideTabBarRedDot, setTabBarBadge, removeTabBarBadge, setWindowSize, onWindowResize, offWindowResize, checkIsPictureInPictureActive, createWorker, createSelectorQuery, createIntersectionObserver, createMediaQueryObserver, IntersectionObserver };
 export { eventCenter, Events, History, nextTick } from "../runtime";

@@ -1,5 +1,7 @@
 // @ts-nocheck
-import type { TaroAny, TaroElement } from '../../runtime'
+import { TaroElement } from '../../runtime'
+
+import type { TaroAny } from '../../runtime'
 
 export class DynamicCenter {
   install (node: TaroElement, parentNode: TaroElement) {
