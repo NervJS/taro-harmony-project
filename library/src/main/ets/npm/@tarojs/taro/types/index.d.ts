@@ -1,9 +1,9 @@
-/// <reference path="global.d.ts" />
+import './global.d.ts'
 
-/// <reference path="taro.api.d.ts" />
-/// <reference path="taro.component.d.ts" />
-/// <reference path="taro.config.d.ts" />
-/// <reference path="taro.lifecycle.d.ts" />
+import './taro.api.d.ts'
+import './taro.component.d.ts'
+import './taro.config.d.ts'
+import './taro.lifecycle.d.ts'
 
 export = Taro
 export as namespace Taro
