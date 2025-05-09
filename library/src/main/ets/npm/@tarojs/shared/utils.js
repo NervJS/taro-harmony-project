@@ -1,5 +1,5 @@
 import { internalComponents } from './components.js';
-import { PLATFORM_CONFIG_MAP, PLATFORM_TYPE } from './constants.js';
+import { PLATFORM_TYPE, PLATFORM_CONFIG_MAP } from './constants.js';
 import { hooks } from './runtime-hooks.js';
 
 const EMPTY_OBJ = {};

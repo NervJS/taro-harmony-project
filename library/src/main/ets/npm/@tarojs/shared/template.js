@@ -879,10 +879,6 @@ ${this.buildXsImportTemplate()}<template is="{{'tmpl_0_' + item.${"nn" /* Shortc
                             propValue = `i.${propAlias}`;
                         }
                         else if (isBooleanStringLiteral(propValue) || isNumber(+propValue)) {
-                            // cursor 默认取最后输入框最后一位 fix #13809
-                            if (prop === 'cursor') {
-                                propValue = `i.${componentAlias.value}?i.${componentAlias.value}.length:-1`;
-                            }
                             propValue = this.isUseXS
                                 ? `xs.b(i.${propAlias},${propValue})`
                                 : `i.${propAlias}===undefined?${propValue}:i.${propAlias}`;
@@ -940,6 +936,9 @@ ${this.buildXsImportTemplate()}<template is="{{'tmpl_0_' + item.${"nn" /* Shortc
                     result[compName] = {
                         name: newComp === null || newComp === void 0 ? void 0 : newComp.name,
                     };
+                }
+                else if (compName === 'list-builder') {
+                    result[compName] = Object.assign(Object.assign({}, newComp), { list: 'i.cn' });
                 }
                 else {
                     result[compName] = newComp;
@@ -1015,7 +1014,7 @@ ${this.buildXsImportTemplate()}<template is="{{'tmpl_0_' + item.${"nn" /* Shortc
             ? this.buildFocusComponentTemplate(comp, level)
             : this.buildStandardComponentTemplate(comp, level);
     }
-    getChildrenTemplate(level) {
+    getChildrenTemplate(level, useSlotItem = false) {
         const { isSupportRecursive, isUseXS, Adapter, isUseCompileMode = true } = this;
         const isLastRecursiveComp = !isSupportRecursive && level + 1 === this.baseLevel;
         const isUnRecursiveXs = !this.isSupportRecursive && isUseXS;
@@ -1026,9 +1025,13 @@ ${this.buildXsImportTemplate()}<template is="{{'tmpl_0_' + item.${"nn" /* Shortc
                 : this.isSupportRecursive
                     ? this.dataKeymap('i:item')
                     : this.dataKeymap('i:item,c:c');
-            return isUseXS
+            const tmpl = isUseXS
                 ? `<template is="{{xs.e(${level})}}" data="{{${data}}}" ${forAttribute} />`
                 : `<template is="tmpl_${level}_${"container" /* Shortcuts.Container */}" data="{{${data}}}" ${forAttribute} />`;
+            if (useSlotItem) {
+                return `<block slot:item slot:index>${tmpl.replace(forAttribute, '')}</block>`;
+            }
+            return tmpl;
         }
         else {
             const data = isUnRecursiveXs
@@ -1041,19 +1044,24 @@ ${this.buildXsImportTemplate()}<template is="{{'tmpl_0_' + item.${"nn" /* Shortc
             const xs = !this.isSupportRecursive
                 ? `xs.a(c, item.${"nn" /* Shortcuts.NodeName */}, l)`
                 : `xs.a(0, item.${"nn" /* Shortcuts.NodeName */})`;
-            return isUseXS
+            const tmpl = isUseXS
                 ? `<template is="{{${xs}}}" data="{{${data}}}" ${forAttribute} />`
                 : isSupportRecursive
                     ? `<template is="{{'tmpl_0_' + item.${"nn" /* Shortcuts.NodeName */}}}" data="{{${data}}}" ${forAttribute} />`
                     : isUseCompileMode
                         ? `<template is="{{'tmpl_' + (item.${"nn" /* Shortcuts.NodeName */}[0]==='${COMPILE_MODE_IDENTIFIER_PREFIX}' ? 0 : c) + '_' + item.${"nn" /* Shortcuts.NodeName */}}}" data="{{${data}}}" ${forAttribute} />`
                         : `<template is="{{'tmpl_' + c + '_' + item.${"nn" /* Shortcuts.NodeName */}}}" data="{{${data}}}" ${forAttribute} />`;
+            if (useSlotItem) {
+                return `<block slot:item slot:index>${tmpl.replace(forAttribute, '')}</block>`;
+            }
+            return tmpl;
         }
     }
     getChildren(comp, level) {
         const { isSupportRecursive } = this;
         const nextLevel = isSupportRecursive ? 0 : level + 1;
-        let child = this.getChildrenTemplate(nextLevel);
+        const isListBuilder = comp.nodeName === 'list-builder';
+        let child = this.getChildrenTemplate(nextLevel, isListBuilder);
         if (isFunction(this.modifyLoopBody)) {
             child = this.modifyLoopBody(child, comp.nodeName);
         }

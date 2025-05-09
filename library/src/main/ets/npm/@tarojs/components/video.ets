@@ -1,4 +1,5 @@
-import { AREA_CHANGE_EVENT_NAME, createTaroEvent, eventHandler, getComponentEventCallback, VISIBLE_CHANGE_EVENT_NAME } from '../runtime'
+import { audio } from '@kit.AudioKit'
+import { AREA_CHANGE_EVENT_NAME, Current, createTaroEvent, eventHandler, getComponentEventCallback, VISIBLE_CHANGE_EVENT_NAME } from '../runtime'
 
 import commonStyleModify from './style'
 import { shouldBindEvent, getNodeThresholds } from './utils/helper'
@@ -60,6 +61,26 @@ export default struct TaroVideo {
     }
   }
 
+  refreshAudioSession() {
+    if (Current.audioSessionManager) {
+      const manager: audio.AudioSessionManager = Current.audioSessionManager
+      if (manager.isAudioSessionActivated()) {
+        manager.deactivateAudioSession().then(() => {
+          let strategy: audio.AudioSessionStrategy = {
+            concurrencyMode: audio.AudioConcurrencyMode.CONCURRENCY_PAUSE_OTHERS
+          }
+          manager.activateAudioSession(strategy)
+        })
+      }
+    }
+  }
+
+  aboutToDisappear(): void {
+    setTimeout(() => {
+      this.refreshAudioSession()
+    }, 200)
+  }
+
   build () {
     Video({
       src: this.attrSrc,
@@ -73,8 +94,17 @@ export default struct TaroVideo {
       .objectFit(this.computedObjectFit)
       .loop(this.attrLoop || false)
       .onStart(shouldBindEvent(() => { emitEvent(this.node, 'play') }, this.node, ['play']))
-      .onPause(shouldBindEvent(() => { emitEvent(this.node, 'pause') }, this.node, ['pause']))
-      .onFinish(shouldBindEvent(() => { emitEvent(this.node, 'ended') }, this.node, ['ended']))
+      .onPause(() => {
+        shouldBindEvent(() => { emitEvent(this.node, 'pause') }, this.node, ['pause'])?.()
+        this.refreshAudioSession()
+      })
+      .onStop(() => {
+        this.refreshAudioSession()
+      })
+      .onFinish(() => {
+        shouldBindEvent(() => { emitEvent(this.node, 'ended') }, this.node, ['ended'])?.()
+        this.refreshAudioSession()
+      })
       .onError(shouldBindEvent(() => { emitEvent(this.node, 'error') }, this.node, ['error']))
       .onUpdate((e) => { handleUpdate(this.node, e) })
       .onPrepared(shouldBindEvent((e: TaroAny) => { emitEvent(this.node, 'loadedMetaData', { duration: e.duration }) }, this.node, ['loadedmetadata']))

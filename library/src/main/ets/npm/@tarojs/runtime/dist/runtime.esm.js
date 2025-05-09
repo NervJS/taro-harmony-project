@@ -3124,7 +3124,7 @@ function parser(html, document) {
     html = styleTagParser.extractStyle(html);
     const tokens = new Scaner(html).scan();
     const root = { tagName: '', children: [], type: 'element', attributes: [] };
-    const state = { tokens, options, cursor: 0, stack: [root] };
+    const state = { tokens, cursor: 0, stack: [root] };
     parse(state);
     return format(root.children, document, {
         styleTagParser,
@@ -4258,6 +4258,11 @@ function createRecursiveComponentConfig(componentName) {
             }
         }
         : EMPTY_OBJ;
+    // 不同平台的个性化配置
+    const extraOptions = {};
+    if ("harmony_cpp" === 'jd') {
+        extraOptions.addGlobalClass = true;
+    }
     return hooks.call('modifyRecursiveComponentConfig', Object.assign({ properties: {
             i: {
                 type: Object,
@@ -4269,9 +4274,7 @@ function createRecursiveComponentConfig(componentName) {
                 type: String,
                 value: ''
             }
-        }, options: {
-            virtualHost: !isCustomWrapper
-        }, methods: {
+        }, options: Object.assign(Object.assign({}, extraOptions), { virtualHost: !isCustomWrapper }), methods: {
             eh: eventHandler
         } }, lifeCycles), { isCustomWrapper });
 }
@@ -4632,10 +4635,7 @@ function handleIntersectionObserverObjectPolyfill() {
                 target: target,
                 boundingClientRect: targetRect,
                 rootBounds: rootRect,
-                intersectionRect: intersectionRect,
-                intersectionRatio: -1,
-                isIntersecting: false,
-            });
+                intersectionRect: intersectionRect});
             if (!oldEntry) {
                 this._queuedEntries.push(newEntry);
             }
@@ -4835,7 +4835,7 @@ function handleIntersectionObserverObjectPolyfill() {
      */
     function addEvent(node, event, fn, opt_useCapture) {
         if (isFunction(node.addEventListener)) {
-            node.addEventListener(event, fn, opt_useCapture );
+            node.addEventListener(event, fn, opt_useCapture);
         }
         else if (isFunction(node.attachEvent)) {
             node.attachEvent('on' + event, fn);
@@ -4851,7 +4851,7 @@ function handleIntersectionObserverObjectPolyfill() {
      */
     function removeEvent(node, event, fn, opt_useCapture) {
         if (isFunction(node.removeEventListener)) {
-            node.removeEventListener(event, fn, opt_useCapture );
+            node.removeEventListener(event, fn, opt_useCapture);
         }
         else if (isFunction(node.detatchEvent)) {
             node.detatchEvent('on' + event, fn);

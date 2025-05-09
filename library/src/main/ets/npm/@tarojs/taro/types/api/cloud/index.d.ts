@@ -1,5 +1,5 @@
 // @ts-nocheck
-import Taro, { DownloadTask, UploadTask } from "../../index"
+import Taro from "../../index"
 
 declare module '../../index' {
   namespace cloud {
@@ -213,6 +213,10 @@ declare module '../../index' {
 
     /** 调用云托管参数 */
     interface CallContainerParam < P extends string | TaroGeneral.IAnyObject | ArrayBuffer = any | any > {
+      config?:{
+        /** 微信云托管的环境ID, 如果在 Taro.cloud.init 中配置了env, 则可以不配置。 */
+        env: string, 
+      }
       /** 服务路径 */
       path: string
       /** HTTP请求方法，默认 GET */

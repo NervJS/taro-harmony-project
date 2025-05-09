@@ -9,14 +9,18 @@ import { systemContext, systemPromise, TaroWindowUtil } from './system'
 export function initStyleSheetConfig (layout: { width: number, height: number} = { width: 0, height: 0 }, navHeight = 0) {
   const display = _display.getDefaultDisplaySync()
 
-  let logicWidth = layout.width ? layout.width * display.densityPixels : display.width
-  logicWidth = logicWidth > FOLD_SPLIT_MAX_WIDTH ? logicWidth / 2 : logicWidth
+  let logicWidth = layout.width ? layout.width : display.width / display.densityPixels
+  const logicHeight = layout.height ? layout.height : display.height / display.densityPixels
+  // 断点区间
+  if (logicWidth >= FOLD_SPLIT_MAX_WIDTH && logicHeight <= (FOLD_SPLIT_MAX_WIDTH * 10.8)) {
+    logicWidth = logicWidth / 2
+  }
   const designWidth = typeof Current.taro.config.designWidth === 'function' ? Current.taro.config.designWidth(0) : Current.taro.config.designWidth
   const deviceRatio = Current.taro.config.deviceRatio ? Current.taro.config.deviceRatio[designWidth] || 1 : 1
 
   return {
     // 设计稿比例基准
-    designRatio: logicWidth / (designWidth * deviceRatio) / display.densityPixels,
+    designRatio: logicWidth / (designWidth * deviceRatio),
     // vp -> px比例，逻辑像素和物理像素的比值
     densityPixels: display.densityPixels,
     // 屏幕宽度:单位vp

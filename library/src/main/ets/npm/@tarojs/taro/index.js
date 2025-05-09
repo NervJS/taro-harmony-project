@@ -21,6 +21,7 @@ import zlib from '@ohos.zlib';
 import app from '@system.app';
 import file from '@system.file';
 import geoLocationManager from '@ohos.geoLocationManager';
+import audio from '@ohos.multimedia.audio';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import fs from '@ohos.file.fs';
 import image from '@ohos.multimedia.image';
@@ -127,13 +128,14 @@ function initPxTransform({ designWidth = defaultDesignWidth, deviceRatio = defau
     }
 }
 const display = _display.getDefaultDisplaySync();
-let displayWidth = display.width;
+const displayWidth = display.width;
+const displayHeight = display.height;
 let ratioCache = false;
 let designWidthFunc;
 let designWidth = defaultDesignWidth;
 function getRatio(value, customDesignWidth) {
     // Note: 提前调用 display 可能无法获取正确值
-    if (ratioCache === false || displayWidth !== display.width || typeof customDesignWidth !== 'undefined') {
+    if (ratioCache === false || typeof customDesignWidth !== 'undefined') {
         const config = Current.taro?.config || {};
         if (!isFunction(designWidthFunc)) {
             designWidthFunc = isFunction(config.designWidth)
@@ -141,10 +143,11 @@ function getRatio(value, customDesignWidth) {
                 : () => config.designWidth;
             designWidth = designWidthFunc(value) || defaultDesignWidth;
         }
-        displayWidth = display.width;
-        // 如果大于1500，视为折叠屏，取一半作为基准值
-        displayWidth = displayWidth > 1500 ? displayWidth / 2 : displayWidth;
-        ratioCache = displayWidth / (customDesignWidth || designWidth);
+        let displayWidth_ = displayWidth;
+        if (px2vp(displayWidth) >= 600 && px2vp(displayHeight) <= (600 * 10.8)) {
+            displayWidth_ = displayWidth_ / 2;
+        }
+        ratioCache = displayWidth_ / (customDesignWidth || designWidth);
     }
     return ratioCache;
 }
@@ -2377,6 +2380,21 @@ const createMediaAudioPlayer = /* @__PURE__ */ temporarilyNotSupport('createMedi
  */
 const createInnerAudioContext = /* @__PURE__ */ temporarilyNotSupport('createInnerAudioContext');
 const createAudioContext = /* @__PURE__ */ temporarilyNotSupport('createAudioContext');
+/** Harmony 专属，更新 audio 状态 */
+const refreshAudioSession = () => {
+    const audioManager = audio.getAudioManager();
+    const audioSessionManager = audioManager.getSessionManager();
+    if (audioSessionManager) {
+        audioSessionManager.deactivateAudioSession().then(() => {
+            setTimeout(() => {
+                const strategy = {
+                    concurrencyMode: audio.AudioConcurrencyMode.CONCURRENCY_PAUSE_OTHERS
+                };
+                audioSessionManager.activateAudioSession(strategy);
+            }, 100);
+        });
+    }
+};
 
 // 背景音频
 const stopBackgroundAudio = /* @__PURE__ */ temporarilyNotSupport('stopBackgroundAudio');
@@ -2552,7 +2570,7 @@ const compressImage = function (options) {
             return callAsyncFail(reject, res, options);
         }
         const { src, quality = 80, compressedWidth, compressedHeight } = options;
-        const srcAfterCompress = src.includes('_after_compress') ? src : src.split('.').join('_after_compress.');
+        let srcAfterCompress = src.includes('_after_compress') ? src : src.split('.').join('_after_compress.');
         eventCenter.trigger(ETS_METHODS_TRIGGER_EVENTNAME, {
             name: 'compressImage',
             args: [src, quality, compressedWidth, compressedHeight],
@@ -2566,10 +2584,14 @@ const compressImage = function (options) {
                     return;
                 }
                 const isPNG = src.endsWith('.png');
+                const suffix = isPNG ? 'png' : 'jpeg';
                 const packingOptionsOHOS = {
                     format: isPNG ? 'image/png' : 'image/jpeg',
                     quality: quality,
                 };
+                const temp = srcAfterCompress.split('.');
+                temp[temp.length - 1] = suffix;
+                srcAfterCompress = temp.join('.');
                 packer
                     .packing(pixelMap, packingOptionsOHOS)
                     .then((value) => {
@@ -4416,30 +4438,35 @@ function filter(fields, dom) {
         return null;
     const { id, dataset, rect, size, scrollOffset, properties = [], computedStyle = [], nodeCanvasType, node, context } = fields;
     const res = {};
-    if (nodeCanvasType && node) { // Node节点获取处理
-        const typeName = dom.nodeName;
-        res.node = {
-            id: dom.id,
-            $taroElement: dom
-        };
-        if (/^canvas/i.test(typeName)) {
-            // harmony todo canvas attr type
-            const canvasType = dom._attrs.type || '';
-            res.nodeCanvasType = canvasType;
-            if (/^(2d|webgl)/i.test(canvasType) && dom) {
-                res.node = dom;
+    if (node) {
+        if (nodeCanvasType) { // Node节点获取处理
+            const typeName = dom.nodeName;
+            res.node = {
+                id: dom.id,
+                $taroElement: dom
+            };
+            if (/^canvas/i.test(typeName)) {
+                // harmony todo canvas attr type
+                const canvasType = dom._attrs.type || '';
+                res.nodeCanvasType = canvasType;
+                if (/^(2d|webgl)/i.test(canvasType) && dom) {
+                    res.node = dom;
+                }
+                else {
+                    res.node = null;
+                }
             }
             else {
-                res.node = null;
+                // TODO https://developers.weixin.qq.com/miniprogram/dev/component/scroll-view.html
+                // if (/^taro-scroll-view-core/i.test(tagName))
+                res.nodeCanvasType = '';
+                res.node = dom;
             }
+            return res;
         }
         else {
-            // TODO https://developers.weixin.qq.com/miniprogram/dev/component/scroll-view.html
-            // if (/^taro-scroll-view-core/i.test(tagName))
-            res.nodeCanvasType = '';
             res.node = dom;
         }
-        return res;
     }
     if (id)
         res.id = dom.id;
@@ -4877,6 +4904,7 @@ var apis = /*#__PURE__*/Object.freeze({
   reLaunch: reLaunch,
   readBLECharacteristicValue: readBLECharacteristicValue,
   redirectTo: redirectTo,
+  refreshAudioSession: refreshAudioSession,
   removeSavedFile: removeSavedFile,
   removeStorage: removeStorage,
   removeStorageSync: removeStorageSync,
@@ -5010,7 +5038,7 @@ function getAppInfo() {
     const config = Current.taro?.config;
     return {
         platform: "harmony" || PLATFORM_TYPE.HARMONY,
-        taroVersion: "4.1.0-alpha.1" || 'unknown',
+        taroVersion: "4.1.0-alpha.2" || 'unknown',
         designWidth: config?.designWidth,
     };
 }
@@ -5023,4 +5051,4 @@ function getUIContext() {
 }
 initNativeApi(taro);
 
-export { ENV_TYPE, IntersectionObserver, addCard, addFileToFavorites, addPhoneCalendar, addPhoneContact, addPhoneRepeatCalendar, addVideoToFavorites, arrayBufferToBase64, authPrivateMessage, authorize, authorizeForMiniProgram, base64ToArrayBuffer, batchGetStorage, batchGetStorageSync, batchSetStorage, batchSetStorageSync, canIUse$1 as canIUse, canIUseWebp, canvasGetImageData, canvasPutImageData, canvasToTempFilePath, checkIsAddedToMyMiniProgram, checkIsOpenAccessibility, checkIsPictureInPictureActive, checkIsSoterEnrolledInDevice, checkIsSupportFacialRecognition, checkIsSupportSoterAuthentication, checkSession, chooseAddress, chooseContact, chooseImage, chooseInvoice, chooseInvoiceTitle, chooseLicensePlate, chooseLocation, chooseMedia, choosePoi, chooseVideo, clearStorage, clearStorageSync, closeBLEConnection, closeBluetoothAdapter, compressImage, compressVideo, connectSocket, connectWifi, createAnimation, createAudioContext, createBLEConnection, createBLEPeripheralServer, createBufferURL, createCacheManager, createCameraContext, createCanvasContext, createInnerAudioContext, createIntersectionObserver, createLivePlayerContext, createLivePusherContext, createMapContext, createMediaAudioPlayer, createMediaContainer, createMediaQueryObserver, createMediaRecorder, createOffscreenCanvas, createSelectorQuery, createTCPSocket, createUDPSocket, createVideoContext, createVideoDecoder, createWebAudioContext, createWorker, taro as default, disableAlertBeforeUnload, downloadFile, enableAlertBeforeUnload, exitMiniProgram, exitVoIPChat, faceVerifyForPay, getAccountInfoSync, getApp, getAppAuthorizeSetting, getAppBaseInfo, getAppInfo, getAvailableAudioSources, getBLEDeviceCharacteristics, getBLEDeviceRSSI, getBLEDeviceServices, getBLEMTU, getBackgroundAudioManager, getBackgroundAudioPlayerState, getBackgroundFetchData, getBackgroundFetchToken, getBatteryInfo, getBatteryInfoSync, getBeacons, getBluetoothAdapterState, getBluetoothDevices, getChannelsLiveInfo, getChannelsLiveNoticeInfo, getChannelsShareKey, getClipboardData, getConnectedBluetoothDevices, getConnectedWifi, getCurrentPages, getDeviceInfo, getDeviceVoIPList, getEnterOptionsSync, getEnv, getExptInfoSync, getExtConfig, getExtConfigSync, getFileInfo, getFileSystemManager, getFuzzyLocation, getGroupEnterInfo, getHCEState, getImageInfo, getLaunchOptionsSync, getLocalIPAddress, getLocation, getLogManager, getMenuButtonBoundingClientRect, getNFCAdapter, getNetworkType, getPerformance, getPrivacySetting, getRandomValues, getRealtimeLogManager, getRecorderManager, getSavedFileInfo, getSavedFileList, getScreenBrightness, getScreenRecordingState, getSelectedTextRange, getSetting, getShareInfo, getStorage, getStorageInfo, getStorageInfoSync, getStorageSync, getSystemInfo, getSystemInfoSync, getSystemSetting, getUIContext, getUpdateManager, getUserCryptoManager, getUserInfo, getUserProfile, getVideoInfo, getWeRunData, getWifiList, getWindowInfo, hideHomeButton, hideKeyboard, hideLoading, hideNavigationBarLoading, hideShareMenu, hideTabBar, hideTabBarRedDot, hideToast, initNativeApi, initPxTransform, isBluetoothDevicePaired, join1v1Chat, joinVoIPChat, loadFontFace, login, makeBluetoothPair, makePhoneCall, navigateBack, navigateBackMiniProgram, navigateTo, navigateToMiniProgram, notifyBLECharacteristicValueChange, offAccelerometerChange, offAppHide, offAppShow, offAudioInterruptionBegin, offAudioInterruptionEnd, offBLECharacteristicValueChange, offBLEConnectionStateChange, offBLEMTUChange, offBLEPeripheralConnectionStateChanged, offBeaconServiceChange, offBeaconUpdate, offBluetoothAdapterStateChange, offBluetoothDeviceFound, offCompassChange, offCopyUrl, offDeviceMotionChange, offError, offGetWifiList, offGyroscopeChange, offHCEMessage, offKeyboardHeightChange, offLazyLoadError, offLocalServiceDiscoveryStop, offLocalServiceFound, offLocalServiceLost, offLocalServiceResolveFail, offLocationChange, offLocationChangeError, offMemoryWarning, offNetworkStatusChange, offNetworkWeakChange, offPageNotFound, offScreenRecordingStateChanged, offThemeChange, offUnhandledRejection, offUserCaptureScreen, offVoIPChatInterrupted, offVoIPChatMembersChanged, offVoIPChatSpeakersChanged, offVoIPChatStateChanged, offVoIPVideoMembersChanged, offWifiConnected, offWifiConnectedWithPartialInfo, offWindowResize, onAccelerometerChange, onAppHide, onAppShow, onAudioInterruptionBegin, onAudioInterruptionEnd, onBLECharacteristicValueChange, onBLEConnectionStateChange, onBLEMTUChange, onBLEPeripheralConnectionStateChanged, onBackgroundAudioPause, onBackgroundAudioPlay, onBackgroundAudioStop, onBackgroundFetchData, onBeaconServiceChange, onBeaconUpdate, onBluetoothAdapterStateChange, onBluetoothDeviceFound, onCompassChange, onCopyUrl, onDeviceMotionChange, onError, onGetWifiList, onGyroscopeChange, onHCEMessage, onKeyboardHeightChange, onLazyLoadError, onLocalServiceDiscoveryStop, onLocalServiceFound, onLocalServiceLost, onLocalServiceResolveFail, onLocationChange, onLocationChangeError, onMemoryWarning, onNeedPrivacyAuthorization, onNetworkStatusChange, onNetworkWeakChange, onPageNotFound, onScreenRecordingStateChanged, onThemeChange, onUnhandledRejection, onUserCaptureScreen, onVoIPChatInterrupted, onVoIPChatMembersChanged, onVoIPChatSpeakersChanged, onVoIPChatStateChanged, onVoIPVideoMembersChanged, onWifiConnected, onWifiConnectedWithPartialInfo, onWindowResize, openBluetoothAdapter, openBusinessView, openCard, openChannelsActivity, openChannelsEvent, openChannelsLive, openChannelsUserProfile, openCustomerServiceChat, openDocument, openEmbeddedMiniProgram, openLocation, openPrivacyContract, openSetting, openVideoEditor, pageScrollTo, pauseBackgroundAudio, pauseVoice, playBackgroundAudio, playVoice, pluginLogin, preloadAssets, preloadSkylineView, preloadWebview, previewImage, previewMedia, pxTransform, pxTransformHelper, reLaunch, readBLECharacteristicValue, redirectTo, removeSavedFile, removeStorage, removeStorageSync, removeTabBarBadge, reportAnalytics, reportEvent, reportMonitor, reportPerformance, request, requestDeviceVoIP, requestOrderPayment, requestPayment, requestPluginPayment, requestSubscribeDeviceMessage, requestSubscribeMessage, requirePlugin$1 as requirePlugin, requirePrivacyAuthorize, reserveChannelsLive, revokeBufferURL, saveFile, saveFileToDisk, saveImageToPhotosAlbum, saveVideoToPhotosAlbum, scanCode, seekBackgroundAudio, sendHCEMessage, sendSms, setBLEMTU, setBackgroundColor, setBackgroundFetchToken, setBackgroundTextStyle, setClipboardData, setEnable1v1Chat, setEnableDebug, setInnerAudioOption, setKeepScreenOn, setNavigationBarColor, setNavigationBarTitle, setScreenBrightness, setStorage, setStorageSync, setTabBarBadge, setTabBarItem, setTabBarStyle, setTopBarText, setVisualEffectOnCapture, setWifiList, setWindowSize, shareFileMessage, shareToWeRun, shareVideoMessage, showActionSheet, showLoading, showModal, showNavigationBarLoading, showRedPackage, showShareImageMenu, showShareMenu, showTabBar, showTabBarRedDot, showToast, startAccelerometer, startBeaconDiscovery, startBluetoothDevicesDiscovery, startCompass, startDeviceMotionListening, startFacialRecognitionVerify, startFacialRecognitionVerifyAndUploadVideo, startGyroscope, startHCE, startLocalServiceDiscovery, startLocationUpdate, startLocationUpdateBackground, startPullDownRefresh, startRecord, startSoterAuthentication, startWifi, stopAccelerometer, stopBackgroundAudio, stopBeaconDiscovery, stopBluetoothDevicesDiscovery, stopCompass, stopDeviceMotionListening, stopGyroscope, stopHCE, stopLocalServiceDiscovery, stopLocationUpdate, stopPullDownRefresh, stopRecord, stopVoice, stopWifi, subscribeVoIPVideoMembers, switchTab, triggerTaskPoolMethods, unstable_SetPageIsTextNeedLayout, updatePageSync, updateShareMenu, updateVoIPChatMuteConfig, updateWeChatApp, uploadFile, vibrateLong, vibrateShort, writeBLECharacteristicValue };
+export { ENV_TYPE, IntersectionObserver, addCard, addFileToFavorites, addPhoneCalendar, addPhoneContact, addPhoneRepeatCalendar, addVideoToFavorites, arrayBufferToBase64, authPrivateMessage, authorize, authorizeForMiniProgram, base64ToArrayBuffer, batchGetStorage, batchGetStorageSync, batchSetStorage, batchSetStorageSync, canIUse$1 as canIUse, canIUseWebp, canvasGetImageData, canvasPutImageData, canvasToTempFilePath, checkIsAddedToMyMiniProgram, checkIsOpenAccessibility, checkIsPictureInPictureActive, checkIsSoterEnrolledInDevice, checkIsSupportFacialRecognition, checkIsSupportSoterAuthentication, checkSession, chooseAddress, chooseContact, chooseImage, chooseInvoice, chooseInvoiceTitle, chooseLicensePlate, chooseLocation, chooseMedia, choosePoi, chooseVideo, clearStorage, clearStorageSync, closeBLEConnection, closeBluetoothAdapter, compressImage, compressVideo, connectSocket, connectWifi, createAnimation, createAudioContext, createBLEConnection, createBLEPeripheralServer, createBufferURL, createCacheManager, createCameraContext, createCanvasContext, createInnerAudioContext, createIntersectionObserver, createLivePlayerContext, createLivePusherContext, createMapContext, createMediaAudioPlayer, createMediaContainer, createMediaQueryObserver, createMediaRecorder, createOffscreenCanvas, createSelectorQuery, createTCPSocket, createUDPSocket, createVideoContext, createVideoDecoder, createWebAudioContext, createWorker, taro as default, disableAlertBeforeUnload, downloadFile, enableAlertBeforeUnload, exitMiniProgram, exitVoIPChat, faceVerifyForPay, getAccountInfoSync, getApp, getAppAuthorizeSetting, getAppBaseInfo, getAppInfo, getAvailableAudioSources, getBLEDeviceCharacteristics, getBLEDeviceRSSI, getBLEDeviceServices, getBLEMTU, getBackgroundAudioManager, getBackgroundAudioPlayerState, getBackgroundFetchData, getBackgroundFetchToken, getBatteryInfo, getBatteryInfoSync, getBeacons, getBluetoothAdapterState, getBluetoothDevices, getChannelsLiveInfo, getChannelsLiveNoticeInfo, getChannelsShareKey, getClipboardData, getConnectedBluetoothDevices, getConnectedWifi, getCurrentPages, getDeviceInfo, getDeviceVoIPList, getEnterOptionsSync, getEnv, getExptInfoSync, getExtConfig, getExtConfigSync, getFileInfo, getFileSystemManager, getFuzzyLocation, getGroupEnterInfo, getHCEState, getImageInfo, getLaunchOptionsSync, getLocalIPAddress, getLocation, getLogManager, getMenuButtonBoundingClientRect, getNFCAdapter, getNetworkType, getPerformance, getPrivacySetting, getRandomValues, getRealtimeLogManager, getRecorderManager, getSavedFileInfo, getSavedFileList, getScreenBrightness, getScreenRecordingState, getSelectedTextRange, getSetting, getShareInfo, getStorage, getStorageInfo, getStorageInfoSync, getStorageSync, getSystemInfo, getSystemInfoSync, getSystemSetting, getUIContext, getUpdateManager, getUserCryptoManager, getUserInfo, getUserProfile, getVideoInfo, getWeRunData, getWifiList, getWindowInfo, hideHomeButton, hideKeyboard, hideLoading, hideNavigationBarLoading, hideShareMenu, hideTabBar, hideTabBarRedDot, hideToast, initNativeApi, initPxTransform, isBluetoothDevicePaired, join1v1Chat, joinVoIPChat, loadFontFace, login, makeBluetoothPair, makePhoneCall, navigateBack, navigateBackMiniProgram, navigateTo, navigateToMiniProgram, notifyBLECharacteristicValueChange, offAccelerometerChange, offAppHide, offAppShow, offAudioInterruptionBegin, offAudioInterruptionEnd, offBLECharacteristicValueChange, offBLEConnectionStateChange, offBLEMTUChange, offBLEPeripheralConnectionStateChanged, offBeaconServiceChange, offBeaconUpdate, offBluetoothAdapterStateChange, offBluetoothDeviceFound, offCompassChange, offCopyUrl, offDeviceMotionChange, offError, offGetWifiList, offGyroscopeChange, offHCEMessage, offKeyboardHeightChange, offLazyLoadError, offLocalServiceDiscoveryStop, offLocalServiceFound, offLocalServiceLost, offLocalServiceResolveFail, offLocationChange, offLocationChangeError, offMemoryWarning, offNetworkStatusChange, offNetworkWeakChange, offPageNotFound, offScreenRecordingStateChanged, offThemeChange, offUnhandledRejection, offUserCaptureScreen, offVoIPChatInterrupted, offVoIPChatMembersChanged, offVoIPChatSpeakersChanged, offVoIPChatStateChanged, offVoIPVideoMembersChanged, offWifiConnected, offWifiConnectedWithPartialInfo, offWindowResize, onAccelerometerChange, onAppHide, onAppShow, onAudioInterruptionBegin, onAudioInterruptionEnd, onBLECharacteristicValueChange, onBLEConnectionStateChange, onBLEMTUChange, onBLEPeripheralConnectionStateChanged, onBackgroundAudioPause, onBackgroundAudioPlay, onBackgroundAudioStop, onBackgroundFetchData, onBeaconServiceChange, onBeaconUpdate, onBluetoothAdapterStateChange, onBluetoothDeviceFound, onCompassChange, onCopyUrl, onDeviceMotionChange, onError, onGetWifiList, onGyroscopeChange, onHCEMessage, onKeyboardHeightChange, onLazyLoadError, onLocalServiceDiscoveryStop, onLocalServiceFound, onLocalServiceLost, onLocalServiceResolveFail, onLocationChange, onLocationChangeError, onMemoryWarning, onNeedPrivacyAuthorization, onNetworkStatusChange, onNetworkWeakChange, onPageNotFound, onScreenRecordingStateChanged, onThemeChange, onUnhandledRejection, onUserCaptureScreen, onVoIPChatInterrupted, onVoIPChatMembersChanged, onVoIPChatSpeakersChanged, onVoIPChatStateChanged, onVoIPVideoMembersChanged, onWifiConnected, onWifiConnectedWithPartialInfo, onWindowResize, openBluetoothAdapter, openBusinessView, openCard, openChannelsActivity, openChannelsEvent, openChannelsLive, openChannelsUserProfile, openCustomerServiceChat, openDocument, openEmbeddedMiniProgram, openLocation, openPrivacyContract, openSetting, openVideoEditor, pageScrollTo, pauseBackgroundAudio, pauseVoice, playBackgroundAudio, playVoice, pluginLogin, preloadAssets, preloadSkylineView, preloadWebview, previewImage, previewMedia, pxTransform, pxTransformHelper, reLaunch, readBLECharacteristicValue, redirectTo, refreshAudioSession, removeSavedFile, removeStorage, removeStorageSync, removeTabBarBadge, reportAnalytics, reportEvent, reportMonitor, reportPerformance, request, requestDeviceVoIP, requestOrderPayment, requestPayment, requestPluginPayment, requestSubscribeDeviceMessage, requestSubscribeMessage, requirePlugin$1 as requirePlugin, requirePrivacyAuthorize, reserveChannelsLive, revokeBufferURL, saveFile, saveFileToDisk, saveImageToPhotosAlbum, saveVideoToPhotosAlbum, scanCode, seekBackgroundAudio, sendHCEMessage, sendSms, setBLEMTU, setBackgroundColor, setBackgroundFetchToken, setBackgroundTextStyle, setClipboardData, setEnable1v1Chat, setEnableDebug, setInnerAudioOption, setKeepScreenOn, setNavigationBarColor, setNavigationBarTitle, setScreenBrightness, setStorage, setStorageSync, setTabBarBadge, setTabBarItem, setTabBarStyle, setTopBarText, setVisualEffectOnCapture, setWifiList, setWindowSize, shareFileMessage, shareToWeRun, shareVideoMessage, showActionSheet, showLoading, showModal, showNavigationBarLoading, showRedPackage, showShareImageMenu, showShareMenu, showTabBar, showTabBarRedDot, showToast, startAccelerometer, startBeaconDiscovery, startBluetoothDevicesDiscovery, startCompass, startDeviceMotionListening, startFacialRecognitionVerify, startFacialRecognitionVerifyAndUploadVideo, startGyroscope, startHCE, startLocalServiceDiscovery, startLocationUpdate, startLocationUpdateBackground, startPullDownRefresh, startRecord, startSoterAuthentication, startWifi, stopAccelerometer, stopBackgroundAudio, stopBeaconDiscovery, stopBluetoothDevicesDiscovery, stopCompass, stopDeviceMotionListening, stopGyroscope, stopHCE, stopLocalServiceDiscovery, stopLocationUpdate, stopPullDownRefresh, stopRecord, stopVoice, stopWifi, subscribeVoIPVideoMembers, switchTab, triggerTaskPoolMethods, unstable_SetPageIsTextNeedLayout, updatePageSync, updateShareMenu, updateVoIPChatMuteConfig, updateWeChatApp, uploadFile, vibrateLong, vibrateShort, writeBLECharacteristicValue };
