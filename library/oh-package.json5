@@ -1,11 +1,11 @@
 {
   "name": "@taro-oh/library",
   "version": "4.1.0-alpha.2",
-  "description": "Please describe the basic information.",
+  "description": "Taro C++ Library for Harmony",
   "main": "Index.ets",
   "types": "./src/main/ets/npm/@tarojs/taro/index.d.ts",
   "author": "Taro Team",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "dependencies": {
     "libTaroHarmonyLibrary.so": "file:./src/main/cpp/types/taro-native-node"
   }
