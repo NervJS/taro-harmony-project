@@ -63,11 +63,45 @@
 
 开放式跨端跨框架解决方案，支持使用 React/Vue/Nerv 等框架来开发微信/京东/百度/支付宝/字节跳动/ QQ 小程序/H5/React Native 等应用。现如今市面上端的形态多种多样，Web、React Native、微信小程序等各种端大行其道，当业务要求同时在不同的端都要求有所表现的时候，针对不同的端去编写多套代码的成本显然非常高，这时候只编写一套代码就能够适配到多端的能力就显得极为需要
 
-### 版本迁移
-
-Taro 1/2 迁移至 Taro 3，请阅读[《Taro 版本升级权威指南》](https://docs.taro.zone/blog/2020-09-01-taro-versions)
-
 ## 学习资源
+
+### 快速开始 -- Harmony
+
+- 安装 harmony 插件
+
+  ```shell
+  # 使用 npm 安装
+  $ npm i @tarojs/plugin-platform-harmony-cpp
+  # 使用 pnpm 安装
+  $ pnpm i @tarojs/plugin-platform-harmony-cpp
+  ```
+
+- 添加插件配置
+
+  ```ts
+  import os from 'os'
+  import path from 'path'
+
+  const config = {
+    // ...
+    plugin: ['@tarojs/plugin-platform-harmony-cpp'],
+    harmony: {
+      // 当前仅支持使用 Vite 编译鸿蒙应用
+      compiler: 'vite',
+      // Note: 鸿蒙工程路径，可以参考 [鸿蒙应用创建导读](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V2/start-with-ets-stage-0000001477980905-V2) 创建
+      projectPath: path.join(os.homedir(), 'projects/my-business-project'),
+      // Taro 项目编译到对应鸿蒙模块名，默认为 entry
+      hapName: 'entry',
+    },
+    // ...
+  }
+  ```
+
+> 开发者也可以使用 `ohpm` 直接安装 `@taro-oh/library` 来使用：
+>
+> `$ ohpm install @taro-oh/library`
+>
+> 除特殊场景外不推荐这样使用，编译项目时 cli 会安装所需 library 版本，详情请查阅[官网文档](https://nervjs.github.io/taro-docs/docs/harmony/)。
 
 [5 分钟上手 Taro 开发](https://docs.taro.zone/docs/guide)
 
