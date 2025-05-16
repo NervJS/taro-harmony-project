@@ -2,7 +2,7 @@
 /**
  * 一个小型缓存池，用于在切换页面时，存储一些上下文信息
  */
-export declare class RuntimeCache<T> {
+declare class RuntimeCache<T> {
     name: string;
     cache: Map<string, T>;
     constructor(name: string);
@@ -11,3 +11,4 @@ export declare class RuntimeCache<T> {
     get(identifier: string): T | undefined;
     delete(identifier: string): void;
 }
+export { RuntimeCache };
