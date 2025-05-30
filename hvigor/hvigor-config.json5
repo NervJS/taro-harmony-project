@@ -1,8 +1,8 @@
 {
   "modelVersion": "5.0.2",
   "dependencies": {
-    "@ohos/hvigor": "5.14.3", // Api 14 release配套sdk的hvigor版本
-    "@ohos/hvigor-ohos-plugin": "5.14.3" // Api 14 release配套sdk的hvigor-ohos- plugin版本
+    // "@ohos/hvigor": "5.14.3", // Api 14 release配套sdk的hvigor版本
+    // "@ohos/hvigor-ohos-plugin": "5.14.3" // Api 14 release配套sdk的hvigor-ohos- plugin版本
   },
   "execution": {
     // "analyze": "normal",                     /* Define the build analyze mode. Value: [ "normal" | "advanced" | false ]. Default: "normal" */
