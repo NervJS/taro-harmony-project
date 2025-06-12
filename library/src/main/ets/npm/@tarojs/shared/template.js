@@ -329,6 +329,7 @@ const nestElements = new Map([
 var PLATFORM_TYPE;
 (function (PLATFORM_TYPE) {
     PLATFORM_TYPE["MINI"] = "mini";
+    PLATFORM_TYPE["ASCF"] = "ascf";
     PLATFORM_TYPE["WEB"] = "web";
     PLATFORM_TYPE["RN"] = "rn";
     PLATFORM_TYPE["HARMONY"] = "harmony";
@@ -341,6 +342,9 @@ const COMPILE_MODE_IDENTIFIER_PREFIX = 'f';
     },
     harmony: {
         type: PLATFORM_TYPE.HARMONY
+    },
+    ascf: {
+        type: PLATFORM_TYPE.ASCF
     },
     mini: {
         type: PLATFORM_TYPE.MINI

@@ -1,6 +1,7 @@
 // @ts-nocheck
 export declare enum PLATFORM_TYPE {
     MINI = "mini",
+    ASCF = "ascf",
     WEB = "web",
     RN = "rn",
     HARMONY = "harmony",
@@ -13,6 +14,9 @@ export declare const PLATFORM_CONFIG_MAP: {
         type: PLATFORM_TYPE;
     };
     harmony: {
+        type: PLATFORM_TYPE;
+    };
+    ascf: {
         type: PLATFORM_TYPE;
     };
     mini: {
