@@ -11,4 +11,5 @@ declare class RuntimeCache<T> {
     get(identifier: string): T | undefined;
     delete(identifier: string): void;
 }
+
 export { RuntimeCache };

@@ -1,7 +1,9 @@
 // @ts-nocheck
-import { Shortcuts, Events } from "../../shared";
-import { Component as Vue3Component } from "../../../@vue/runtime-core";
-import { Component, ComponentClass } from "../../../react";
+import { Shortcuts, Events } from '../../shared';
+export { Events, hooks } from '../../shared';
+import { Component } from '../../../@vue/runtime-core';
+import { Component as Component$1, ComponentClass } from '../../../react';
+
 declare class ClassList {
     private el;
     private tokenList;
@@ -17,10 +19,12 @@ declare class ClassList {
     private checkTokenIsValid;
     private _update;
 }
+
 interface Attributes {
     name: string;
     value: string;
 }
+
 interface EventOptions {
     bubbles: boolean;
     cancelable: boolean;
@@ -35,6 +39,7 @@ interface MpEvent {
     target: Target;
     currentTarget: Target;
 }
+
 interface EventListenerOptions {
     capture?: boolean;
 }
@@ -46,9 +51,10 @@ interface EventHandler<T = any, R = void> {
     (...args: T[]): R;
     _stop?: boolean;
 }
-// Note: @tarojs/runtime 不依赖 @tarojs/taro, 所以不能改为从 @tarojs/taro 引入 (可能导致循环依赖)
+
 type TFunc = (...args: any[]) => any;
 type PageConfig = Record<string, any>;
+
 interface MpInstance {
     config: PageConfig;
     setData: (data: unknown, cb: () => void) => void;
@@ -76,12 +82,14 @@ interface MiniTextData {
 }
 type MiniData = MiniElementData | MiniTextData;
 type HydratedData = () => MiniData | MiniData[];
+
 type UpdatePayloadValue = string | boolean | HydratedData;
 type DataTree = Record<string, UpdatePayloadValue | ReturnType<HydratedData>>;
 interface UpdatePayload {
     path: string;
     value: UpdatePayloadValue;
 }
+
 declare const enum NodeType {
     ELEMENT_NODE = 1,
     ATTRIBUTE_NODE = 2,
@@ -92,6 +100,7 @@ declare const enum NodeType {
     PROCESSING_INSTRUCTION_NODE = 7,
     DOCUMENT_NODE = 9
 }
+
 declare class TaroText extends TaroNode {
     _value: string;
     nodeType: NodeType;
@@ -104,25 +113,27 @@ declare class TaroText extends TaroNode {
     set data(text: string);
     get data(): string;
 }
+
 interface Node {
     type: string;
 }
 interface Comment extends Node {
-    type: "comment";
+    type: 'comment';
     content: string;
 }
 interface Text extends Node {
-    type: "text";
+    type: 'text';
     content: string;
 }
 interface Element extends Node {
-    type: "element";
+    type: 'element';
     tagName: string;
     children: ChildNode[];
     attributes: string[];
 }
 type ChildNode = Comment | Text | Element;
-interface Options {
+
+interface Options$2 {
     prerender: boolean;
     debug: boolean;
     html?: {
@@ -135,6 +146,7 @@ interface Options {
     };
     miniGlobal?: any;
 }
+
 declare class TaroEventTarget {
     __handlers: Record<string, EventHandler[]>;
     addEventListener(type: string, handler: EventHandler, options?: boolean | AddEventListenerOptions): void;
@@ -142,6 +154,7 @@ declare class TaroEventTarget {
     isAnyEventBinded(): boolean;
     isOnlyClickBinded(): boolean;
 }
+
 declare class TaroRootElement extends TaroElement {
     private updatePayloads;
     private updateCallbacks;
@@ -156,6 +169,7 @@ declare class TaroRootElement extends TaroElement {
     enqueueUpdateCallback(cb: TFunc, ctx?: Record<string, any>): void;
     flushUpdateCallback(): void;
 }
+
 interface RemoveChildOptions {
     cleanRef?: boolean;
     doUpdate?: boolean;
@@ -183,7 +197,6 @@ declare class TaroNode extends TaroEventTarget {
      * @textContent 目前只能置空子元素
      * @TODO 等待完整 innerHTML 实现
      */
-    // eslint-disable-next-line accessor-pairs
     set textContent(text: string);
     /**
      * @doc https://developer.mozilla.org/zh-CN/docs/Web/API/Node/insertBefore
@@ -226,6 +239,7 @@ declare class TaroNode extends TaroEventTarget {
     get ownerDocument(): TaroDocument;
     static extend(methodName: string, options: TFunc | Record<string, any>): void;
 }
+
 declare class Style {
     _pending: boolean;
     _usedStyleProp: Set<string>;
@@ -239,7 +253,7 @@ declare class Style {
     removeProperty(propertyName: string): string;
     getPropertyValue(propertyName: string): any;
 }
-// Taro 事件对象。以 Web 标准的事件对象为基础，加入小程序事件对象中携带的部分信息，并模拟实现事件冒泡。
+
 declare class TaroEvent {
     private cacheTarget;
     private cacheCurrentTarget;
@@ -249,10 +263,7 @@ declare class TaroEvent {
     _stop: boolean;
     _end: boolean;
     defaultPrevented: boolean;
-    // Mouse Event botton property, it's used in 3rd lib, like react-router. default 0 in general
     button: number;
-    // timestamp can either be hi-res ( relative to page load) or low-res (relative to UNIX epoch)
-    // here use hi-res timestamp
     timeStamp: number;
     mpEvent: MpEvent | undefined;
     constructor(type: string, opts: EventOptions, event?: MpEvent);
@@ -263,8 +274,8 @@ declare class TaroEvent {
     get currentTarget(): any;
 }
 declare function createEvent(event: MpEvent | string, node?: TaroElement): TaroEvent;
-// 小程序的事件代理回调函数
 declare function eventHandler(event: MpEvent): any;
+
 declare class TaroElement extends TaroNode {
     ctx?: any;
     tagName: string;
@@ -287,7 +298,6 @@ declare class TaroElement extends TaroNode {
     hasAttribute(qualifiedName: string): boolean;
     hasAttributes(): boolean;
     get focus(): () => void;
-    // 兼容 Vue3，详情请见：https://github.com/NervJS/taro/issues/10579
     set focus(value: () => void);
     blur(): void;
     setAttribute(qualifiedName: string, value: any): void;
@@ -300,6 +310,7 @@ declare class TaroElement extends TaroNode {
     removeEventListener(type: any, handler: any, sideEffect?: boolean): void;
     static extend(methodName: string, options: TFunc | Record<string, any>): void;
 }
+
 declare class FormElement extends TaroElement {
     get type(): string;
     set type(val: string);
@@ -307,6 +318,7 @@ declare class FormElement extends TaroElement {
     set value(val: string | boolean | number | any[]);
     dispatchEvent(event: TaroEvent): boolean;
 }
+
 declare class TaroDocument extends TaroElement {
     documentElement: TaroElement;
     head: TaroElement;
@@ -315,29 +327,29 @@ declare class TaroDocument extends TaroElement {
     cookie?: string;
     constructor();
     createElement(type: string): TaroElement | TaroRootElement | FormElement;
-    // an ugly fake createElementNS to deal with @vue/runtime-dom's
-    // support mounting app to svg container since vue@3.0.8
     createElementNS(_svgNS: string, type: string): TaroElement | TaroRootElement | FormElement;
     createTextNode(text: string): TaroText;
     getElementById<T extends TaroElement>(id: string | undefined | null): T | null;
     querySelector<T extends TaroElement>(query: string): T | null;
     querySelectorAll(): never[];
-    // @TODO: @PERF: 在 hydrate 移除掉空的 node
     createComment(): TaroText;
     get defaultView(): any;
 }
+
 interface Env {
     window: any;
     document: TaroDocument;
 }
 declare const env: Env;
-// Note: 小程序端 vite 打包成 commonjs，const document = xxx 会报错，所以把 document 改为 taroDocumentProvider
+
 declare const taroDocumentProvider: TaroDocument;
+
 type TGetComputedStyle = typeof window.getComputedStyle | ((el: TaroElement) => Style);
-// Note: 小程序端 vite 打包成 commonjs，const getComputedStyle = xxx 会报错，所以把 GetComputedStyle 改为 taroGetComputedStyleProvider
 declare const taroGetComputedStyleProvider: TGetComputedStyle;
+
 declare const eventCenter: Events;
 type EventsType = typeof Events;
+
 /**
  * 一个小型缓存池，用于在切换页面时，存储一些上下文信息
  */
@@ -350,7 +362,8 @@ declare class RuntimeCache<T> {
     get(identifier: string): T | undefined;
     delete(identifier: string): void;
 }
-type Options$0 = {
+
+type Options$1 = {
     window: any;
 };
 type LocationContext = {
@@ -358,8 +371,7 @@ type LocationContext = {
 };
 declare class TaroLocation extends Events {
     #private;
-    constructor(options: Options$0);
-    /* public property */
+    constructor(options: Options$1);
     get protocol(): string;
     set protocol(val: string);
     get host(): string;
@@ -373,27 +385,26 @@ declare class TaroLocation extends Events {
     get search(): string;
     set search(val: string);
     get hash(): string;
-    // 小程序的navigateTo存在截断hash字符串的问题
     set hash(val: string);
     get href(): string;
     set href(val: string);
     get origin(): string;
     set origin(val: string);
-    /* public method */
     assign(): void;
     reload(): void;
     replace(url: string): void;
     toString(): string;
-    // For debug
     get cache(): RuntimeCache<LocationContext>;
 }
+
 declare const Location: typeof TaroLocation;
+
 interface HistoryState {
     state: Record<string, any> | null;
     title: string;
     url: string;
 }
-type Options$1 = {
+type Options = {
     window: any;
 };
 type HistoryContext = {
@@ -403,33 +414,30 @@ type HistoryContext = {
 };
 declare class TaroHistory extends Events {
     #private;
-    constructor(location: TaroLocation, options: Options$1);
-    /* public property */
+    constructor(location: TaroLocation, options: Options);
     get length(): number;
     get state(): Record<string, any> | null;
-    /* public method */
     go(delta: number): void;
     back(): void;
     forward(): void;
     pushState(state: any, title: string, url: string): void;
     replaceState(state: any, title: string, url: string): void;
-    // For debug
     get cache(): RuntimeCache<HistoryContext>;
 }
+
 declare const History: typeof TaroHistory;
+
 declare const nav: typeof window.navigator;
-// https://github.com/myrne/performance-now
+
 declare let now: () => number;
-// https://gist.github.com/paulirish/1579671
-// https://gist.github.com/jalbam/5fe05443270fa6d8136238ec72accbc0
 declare const _raf: typeof requestAnimationFrame | ((callback: any) => NodeJS.Timeout);
 declare const _caf: typeof cancelAnimationFrame;
+
 declare class TaroURL {
     #private;
     static createObjectURL(): void;
     static revokeObjectURL(): void;
     constructor(url: string, base?: string);
-    /* public property */
     get protocol(): string;
     set protocol(val: string);
     get host(): string;
@@ -449,10 +457,8 @@ declare class TaroURL {
     get origin(): string;
     set origin(val: string);
     get searchParams(): URLSearchParams;
-    // public method
     toString(): string;
     toJSON(): string;
-    // convenient for deconstructor
     _toRaw(): {
         protocol: string;
         port: string;
@@ -465,7 +471,7 @@ declare class TaroURL {
         href: string;
     };
 }
-// Note: 小程序端 vite 打包成 commonjs，const URL = xxx 会报错，所以把 URL 改为 TaroURLProvider
+
 declare const TaroURLProvider: typeof TaroURL;
 declare function parseUrl(url?: string): {
     href: string;
@@ -478,7 +484,9 @@ declare function parseUrl(url?: string): {
     search: string;
     hash: string;
 };
-declare const URLSearchParams: any;
+
+declare const URLSearchParams$1: any;
+
 declare class TaroWindow extends Events {
     navigator: Navigator;
     requestAnimationFrame: typeof requestAnimationFrame | ((callback: any) => NodeJS.Timeout);
@@ -496,19 +504,20 @@ declare class TaroWindow extends Events {
     setTimeout(...args: Parameters<typeof setTimeout>): NodeJS.Timeout;
     clearTimeout(...args: Parameters<typeof clearTimeout>): void;
 }
-// Note: 小程序端 vite 打包成 commonjs，const window = xxx 会报错，所以把 window 改为 taroWindowProvider，location 和 history 同理
+
 declare const taroWindowProvider: TaroWindow;
 declare const taroLocationProvider: TaroLocation;
 declare const taroHistoryProvider: TaroHistory;
-// for Vue3
+
 declare class SVGElement extends TaroElement {
 }
+
 /**
  * A MutationRecord represents an individual DOM mutation.
  * It is the object that is passed to MutationObserver's callback.
  * @see https://dom.spec.whatwg.org/#interface-mutationrecord
  * @see https://developer.mozilla.org/en-US/docs/Web/API/MutationRecord
- */
+*/
 interface MutationRecord {
     readonly target: TaroNode;
     readonly addedNodes?: TaroNode[];
@@ -518,7 +527,6 @@ interface MutationRecord {
     readonly attributeName?: string | null;
     readonly attributeNamespace?: string | null;
     oldValue?: string | null;
-    // extended
     readonly type: MutationRecordType;
     readonly value?: string | null;
 }
@@ -527,6 +535,7 @@ declare const enum MutationRecordType {
     CHARACTER_DATA = "characterData",
     CHILD_LIST = "childList"
 }
+
 type MutationCallback = (mutations: MutationRecord[]) => any;
 /**
  * @see https://dom.spec.whatwg.org/#dictdef-mutationobserverinit
@@ -576,17 +585,16 @@ declare class MutationObserverImpl {
      */
     takeRecords(): MutationRecord[];
 }
+
 declare class MutationObserver {
-    core: Pick<MutationObserverImpl, "observe" | "disconnect" | "takeRecords">;
+    core: Pick<MutationObserverImpl, 'observe' | 'disconnect' | 'takeRecords'>;
     constructor(callback: MutationCallback);
-    observe(...args: [
-        TaroNode,
-        MutationObserverInit?
-    ]): void;
+    observe(...args: [TaroNode, MutationObserverInit?]): void;
     disconnect(): void;
     takeRecords(): MutationRecord[];
     static record(record: MutationRecord): void;
 }
+
 declare const PROPERTY_THRESHOLD = 2046;
 declare const TARO_RUNTIME = "Taro runtime";
 declare const HOOKS_APP_ID = "taro-app";
@@ -647,7 +655,8 @@ declare enum CONTEXT_ACTIONS {
     RECOVER = "2",
     DESTORY = "3"
 }
-interface Instance<T = Record<string, any>> extends Component<T>, Show, PageInstance {
+
+interface Instance<T = Record<string, any>> extends Component$1<T>, Show, PageInstance {
     tid?: string;
     node?: TaroElement;
     $forceUpdate?(): void;
@@ -659,11 +668,11 @@ interface PageProps {
 }
 interface ReactPageComponent<T = PageProps> extends ComponentClass<T>, PageInstance {
 }
-interface ReactPageInstance<T = PageProps> extends Component<T>, PageInstance {
+interface ReactPageInstance<T = PageProps> extends Component$1<T>, PageInstance {
     componentDidShow?(): void;
     componentDidHide?(): void;
 }
-interface ReactAppInstance<T = AppInstance> extends Component<T>, AppInstance {
+interface ReactAppInstance<T = AppInstance> extends Component$1<T>, AppInstance {
 }
 interface PageLifeCycle extends Show {
     eh?(event: MpEvent): void;
@@ -702,7 +711,7 @@ interface PageInstance extends PageLifeCycle {
     /** 页面的组件选项 */
     options?: Record<string, unknown>;
     /** 页面渲染引擎类型 */
-    renderer?: "webview" | "skyline";
+    renderer?: 'webview' | 'skyline';
     /** 获得一个 EventChannel 对象，用于页面间通讯 */
     getOpenerEventChannel?(): Record<string, any>;
 }
@@ -714,8 +723,8 @@ interface Show {
 }
 interface AppInstance extends Show {
     componentDidShow?(options?: Record<string, unknown>): void;
-    mount?(component: React.ComponentClass | Vue3Component, id: string, cb: (...args: any[]) => void): void;
-    mount?(component: React.ComponentClass | Vue3Component, id: string, getCtx: (...args: any[]) => void, cb: (...args: any[]) => void): void;
+    mount?(component: React.ComponentClass | Component, id: string, cb: (...args: any[]) => void): void;
+    mount?(component: React.ComponentClass | Component, id: string, getCtx: (...args: any[]) => void, cb: (...args: any[]) => void): void;
     onError?(error: string): void;
     onLaunch?(options?: Record<string, unknown>): void;
     onPageNotFound?(res: any): void;
@@ -726,6 +735,7 @@ interface AppInstance extends Show {
     taroGlobalData?: Record<any, any>;
     config?: Record<any, any>;
 }
+
 interface Router {
     params: Record<string, unknown>;
     path: string;
@@ -743,11 +753,13 @@ interface Current {
 }
 declare const Current: Current;
 declare const getCurrentInstance: () => Current;
+
 interface IEventSource extends Map<string | undefined | null, TaroNode> {
     removeNode(child: TaroNode): void;
     removeNodeTree(child: TaroNode): void;
 }
 declare const eventSource: IEventSource;
+
 declare function injectPageInstance(inst: Instance<PageProps>, id: string): void;
 declare function getPageInstance(id: string): Instance | undefined;
 declare function removePageInstance(id: string): void;
@@ -760,6 +772,7 @@ declare function getOnHideEventKey(path: string): string;
 declare function createPageConfig(component: any, pageName?: string, data?: Record<string, unknown>, pageConfig?: PageConfig): PageInstance;
 declare function createComponentConfig(component: React.ComponentClass, componentName?: string, data?: Record<string, unknown>): any;
 declare function createRecursiveComponentConfig(componentName?: string): any;
+
 /**
  * React also has a fancy function's name for this: `hydrate()`.
  * You may have been heard `hydrate` as a SSR-related function,
@@ -767,8 +780,11 @@ declare function createRecursiveComponentConfig(componentName?: string): any;
  * it's a vnode traverser and modifier: that's exactly what Taro's doing in here.
  */
 declare function hydrate(node: TaroElement | TaroText): MiniData;
+
 declare const nextTick: (cb: TFunc, ctx?: Record<string, any>) => void;
-declare const options: Options;
+
+declare const options: Options$2;
+
 declare class Performance {
     #private;
     private recorder;
@@ -777,6 +793,18 @@ declare class Performance {
     delayStop(id: string, delay?: number): ((...args: any[]) => void) | undefined;
 }
 declare const perf: Performance;
+
+declare function throttle(fn: any, threshold?: number, scope?: any): (...args: any[]) => void;
+declare function debounce(fn: any, ms?: number, scope?: any): (...args: any[]) => void;
+
+declare const addLeadingSlash: (url?: string) => string;
+declare const hasBasename: (path?: string, prefix?: string) => boolean;
+declare const stripBasename: (path?: string, prefix?: string) => string;
+declare const stripTrailing: (str?: string) => string;
+declare const stripSuffix: (path?: string, suffix?: string) => string;
+declare const getHomePage: (path?: string, basename?: string, customRoutes?: Record<string, string | string[]>, entryPagePath?: string) => string;
+declare const getCurrentPage: (routerMode?: string, basename?: string) => string;
+
 declare const incrementId: () => () => string;
 declare function isElement(node: TaroNode): node is TaroElement;
 declare function isText(node: TaroNode): node is TaroText;
@@ -796,17 +824,8 @@ interface Ctor {
 declare function extend(ctor: Ctor, methodName: string, options: TFunc | Record<string, any>): void;
 declare function getComponentsAlias(): any;
 declare function convertNumber2PX(value: number): string;
-declare function throttle(fn: any, threshold?: number, scope?: any): (...args: any[]) => void;
-declare function debounce(fn: any, ms?: number, scope?: any): (...args: any[]) => void;
-// export const removeLeadingSlash = (str = '') => str.replace(/^\.?\//, '')
-// export const removeTrailingSearch = (str = '') => str.replace(/\?[\s\S]*$/, '')
-declare const addLeadingSlash: (url?: string) => string;
-declare const hasBasename: (path?: string, prefix?: string) => boolean;
-declare const stripBasename: (path?: string, prefix?: string) => string;
-declare const stripTrailing: (str?: string) => string;
-declare const stripSuffix: (path?: string, suffix?: string) => string;
-declare const getHomePage: (path?: string, basename?: string, customRoutes?: Record<string, string | string[]>, entryPagePath?: string) => string;
-declare const getCurrentPage: (routerMode?: string, basename?: string) => string;
+
 declare function handlePolyfill(): void;
-export { hooks } from '../../shared';
-export { taroDocumentProvider as document, taroGetComputedStyleProvider as getComputedStyle, History, Location, nav as navigator, _caf as cancelAnimationFrame, now, _raf as requestAnimationFrame, parseUrl, TaroURLProvider as URL, URLSearchParams, taroHistoryProvider as history, taroLocationProvider as location, taroWindowProvider as window, TaroElement, createEvent, eventHandler, TaroEvent, FormElement, TaroNode, TaroRootElement, Style, SVGElement, TaroText, MutationObserver, env, PROPERTY_THRESHOLD, TARO_RUNTIME, HOOKS_APP_ID, SET_DATA, PAGE_INIT, ROOT_STR, HTML, HEAD, BODY, APP, CONTAINER, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, ID, UID, CLASS, STYLE, FOCUS, VIEW, STATIC_VIEW, PURE_VIEW, CLICK_VIEW, PROPS, DATASET, OBJECT, VALUE, INPUT, CHANGE, CUSTOM_WRAPPER, TARGET, CURRENT_TARGET, TYPE, CONFIRM, TIME_STAMP, KEY_CODE, TOUCHMOVE, DATE, SET_TIMEOUT, COMPILE_MODE, CATCHMOVE, CATCH_VIEW, COMMENT, ON_LOAD, ON_READY, ON_SHOW, ON_HIDE, OPTIONS, EXTERNAL_CLASSES, EVENT_CALLBACK_RESULT, BEHAVIORS, A, CONTEXT_ACTIONS, Current, getCurrentInstance, eventSource, createComponentConfig, createPageConfig, createRecursiveComponentConfig, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, injectPageInstance, removePageInstance, safeExecute, stringify, EventsType, eventCenter, Events, hydrate, nextTick, options, perf, incrementId, isElement, isText, isComment, isHasExtractProp, isParentBinded, shortcutAttr, customWrapperCache, extend, getComponentsAlias, convertNumber2PX, throttle, debounce, addLeadingSlash, hasBasename, stripBasename, stripTrailing, stripSuffix, getHomePage, getCurrentPage, Instance, PageProps, ReactPageComponent, ReactPageInstance, ReactAppInstance, PageLifeCycle, PageInstance, AppInstance, Attributes, EventOptions, MpEvent, EventListenerOptions, AddEventListenerOptions, EventHandler, MpInstance, MiniElementData, MiniTextData, MiniData, HydratedData, UpdatePayloadValue, DataTree, UpdatePayload, Options$1 as Options, TFunc, PageConfig, handlePolyfill };
+
+export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams$1 as URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBinded, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
+export type { AddEventListenerOptions, AppInstance, Attributes, DataTree, EventHandler, EventListenerOptions, EventOptions, EventsType, HydratedData, Instance, MiniData, MiniElementData, MiniTextData, MpEvent, MpInstance, Options$2 as Options, PageConfig, PageInstance, PageLifeCycle, PageProps, ReactAppInstance, ReactPageComponent, ReactPageInstance, TFunc, UpdatePayload, UpdatePayloadValue };
