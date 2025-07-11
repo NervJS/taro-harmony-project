@@ -20,6 +20,88 @@ declare class ClassList {
     private _update;
 }
 
+/** @ignore */
+interface KeyFrame {
+    /** 关键帧的偏移，范围[0-1] */
+    offset?: number;
+    /** 动画缓动函数 */
+    ease?: string;
+    /** 基点位置，即 CSS transform-origin */
+    transformOrigin?: string;
+    /** 背景颜色，即 CSS background-color */
+    backgroundColor?: string;
+    /** 底边位置，即 CSS bottom */
+    bottom?: number | string;
+    /** 高度，即 CSS height */
+    height?: number | string;
+    /** 左边位置，即 CSS left */
+    left?: number | string;
+    /** 宽度，即 CSS width */
+    width?: number | string;
+    /** 不透明度，即 CSS opacity */
+    opacity?: number | string;
+    /** 右边位置，即 CSS right */
+    right?: number | string;
+    /** 顶边位置，即 CSS top */
+    top?: number | string;
+    /** 变换矩阵，即 CSS transform matrix */
+    matrix?: number[];
+    /** 三维变换矩阵，即 CSS transform matrix3d */
+    matrix3d?: number[];
+    /** 旋转，即 CSS transform rotate */
+    rotate?: number;
+    /** 三维旋转，即 CSS transform rotate3d */
+    rotate3d?: number[];
+    /** X 方向旋转，即 CSS transform rotateX */
+    rotateX?: number;
+    /** Y 方向旋转，即 CSS transform rotateY */
+    rotateY?: number;
+    /** Z 方向旋转，即 CSS transform rotateZ */
+    rotateZ?: number;
+    /** 缩放，即 CSS transform scale */
+    scale?: number[];
+    /** 三维缩放，即 CSS transform scale3d */
+    scale3d?: number[];
+    /** X 方向缩放，即 CSS transform scaleX */
+    scaleX?: number;
+    /** Y 方向缩放，即 CSS transform scaleY */
+    scaleY?: number;
+    /** Z 方向缩放，即 CSS transform scaleZ */
+    scaleZ?: number;
+    /** 倾斜，即 CSS transform skew */
+    skew?: number[];
+    /** X 方向倾斜，即 CSS transform skewX */
+    skewX?: number;
+    /** Y 方向倾斜，即 CSS transform skewY */
+    skewY?: number;
+    /** 位移，即 CSS transform translate */
+    translate?: Array<number | string>;
+    /** 三维位移，即 CSS transform translate3d */
+    translate3d?: Array<number | string>;
+    /** X 方向位移，即 CSS transform translateX */
+    translateX?: number | string;
+    /** Y 方向位移，即 CSS transform translateY */
+    translateY?: number | string;
+    /** Z 方向位移，即 CSS transform translateZ */
+    translateZ?: number | string;
+    composite?: 'replace' | 'add' | 'accumulate' | 'auto';
+    easing?: string;
+    [property: string]: any;
+}
+/** @ignore */
+interface ScrollTimelineOption {
+    /** 指定滚动元素的选择器（只支持 scroll-view），该元素滚动时会驱动动画的进度 */
+    scrollSource: string;
+    /** 指定滚动的方向。有效值为 horizontal 或 vertical */
+    orientation?: string;
+    /** 指定开始驱动动画进度的滚动偏移量，单位 px */
+    startScrollOffset: number;
+    /** 指定停止驱动动画进度的滚动偏移量，单位 px */
+    endScrollOffset: number;
+    /** 起始和结束的滚动范围映射的时间长度，该时间可用于与关键帧动画里的时间 (duration) 相匹配，单位 ms */
+    timeRange: number;
+}
+
 interface Attributes {
     name: string;
     value: string;
@@ -714,6 +796,10 @@ interface PageInstance extends PageLifeCycle {
     renderer?: 'webview' | 'skyline';
     /** 获得一个 EventChannel 对象，用于页面间通讯 */
     getOpenerEventChannel?(): Record<string, any>;
+    /** 执行关键帧动画，详见[动画](https://developers.weixin.qq.com/miniprogram/dev/framework/view/animation.html) */
+    animate?(selector: string, keyFrames: KeyFrame[], duration: number, callback: () => void): void;
+    /** 滚动驱动的动画，详见[动画](https://developers.weixin.qq.com/miniprogram/dev/framework/view/animation.html) */
+    animate?(selector: string, keyFrames: KeyFrame[], duration: number, scrollTimeline: ScrollTimelineOption): void;
 }
 interface Show {
     componentDidShow?(): void;
@@ -828,4 +914,4 @@ declare function convertNumber2PX(value: number): string;
 declare function handlePolyfill(): void;
 
 export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams$1 as URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBinded, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
-export type { AddEventListenerOptions, AppInstance, Attributes, DataTree, EventHandler, EventListenerOptions, EventOptions, EventsType, HydratedData, Instance, MiniData, MiniElementData, MiniTextData, MpEvent, MpInstance, Options$2 as Options, PageConfig, PageInstance, PageLifeCycle, PageProps, ReactAppInstance, ReactPageComponent, ReactPageInstance, TFunc, UpdatePayload, UpdatePayloadValue };
+export type { AddEventListenerOptions, AppInstance, Attributes, DataTree, EventHandler, EventListenerOptions, EventOptions, EventsType, HydratedData, Instance, KeyFrame, MiniData, MiniElementData, MiniTextData, MpEvent, MpInstance, Options$2 as Options, PageConfig, PageInstance, PageLifeCycle, PageProps, ReactAppInstance, ReactPageComponent, ReactPageInstance, ScrollTimelineOption, TFunc, UpdatePayload, UpdatePayloadValue };
