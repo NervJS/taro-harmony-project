@@ -689,7 +689,7 @@ function parseUrl(url = '') {
     result.search = matches[10] || '';
     result.hash = matches[12] || '';
     result.href = url;
-    result.origin = result.protocol + '//' + result.hostname;
+    result.origin = result.protocol + '//' + result.hostname + (result.port ? `:${result.port}` : '');
     result.host = result.hostname + (result.port ? `:${result.port}` : '');
     return result;
 }
