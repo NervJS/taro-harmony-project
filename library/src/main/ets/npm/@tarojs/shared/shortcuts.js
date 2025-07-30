@@ -6,7 +6,7 @@ var Shortcuts;
     Shortcuts["Text"] = "v";
     Shortcuts["NodeType"] = "nt";
     Shortcuts["NodeName"] = "nn";
-    // Attrtibutes
+    // Attributes
     Shortcuts["Sid"] = "sid";
     Shortcuts["Style"] = "st";
     Shortcuts["Class"] = "cl";

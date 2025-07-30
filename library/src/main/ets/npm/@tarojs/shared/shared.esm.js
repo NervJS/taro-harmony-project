@@ -1250,7 +1250,7 @@ function equipCommonApis(taro, global, apis = {}) {
     taro.getAppInfo = function () {
         return {
             platform: "harmony" || 'MiniProgram',
-            taroVersion: "4.1.4-beta.20" || 'unknown',
+            taroVersion: "4.1.4-beta.21" || 'unknown',
             designWidth: taro.config.designWidth
         };
     };
@@ -1291,7 +1291,7 @@ var Shortcuts;
     Shortcuts["Text"] = "v";
     Shortcuts["NodeType"] = "nt";
     Shortcuts["NodeName"] = "nn";
-    // Attrtibutes
+    // Attributes
     Shortcuts["Sid"] = "sid";
     Shortcuts["Style"] = "st";
     Shortcuts["Class"] = "cl";
