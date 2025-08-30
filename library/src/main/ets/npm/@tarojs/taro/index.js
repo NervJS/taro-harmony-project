@@ -300,7 +300,7 @@ function temporarilyNotSupport(name, recommended) {
             type: 'method',
             category: 'temporarily',
         });
-        if ("development" === 'production') {
+        if ("production" === 'production') {
             console.warn(errMsg);
             return handle.success({ errMsg });
         }
@@ -320,7 +320,7 @@ function permanentlyNotSupport(name = '') {
             type: 'method',
             category: 'permanently',
         });
-        if ("development" === 'production') {
+        if ("production" === 'production') {
             console.warn(errMsg);
             return handle.success({ errMsg });
         }
@@ -5063,7 +5063,7 @@ function getAppInfo() {
     const config = Current.taro?.config;
     return {
         platform: "harmony" || PLATFORM_TYPE.HARMONY,
-        taroVersion: "4.1.6-beta.0" || 'unknown',
+        taroVersion: "4.1.6" || 'unknown',
         designWidth: config?.designWidth,
     };
 }
