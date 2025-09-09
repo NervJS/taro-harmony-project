@@ -512,7 +512,7 @@ declare const History: typeof TaroHistory;
 declare const nav: typeof window.navigator;
 
 declare let now: () => number;
-declare const _raf: typeof requestAnimationFrame | ((callback: any) => NodeJS.Timeout);
+declare const _raf: typeof requestAnimationFrame;
 declare const _caf: typeof cancelAnimationFrame;
 
 declare class TaroURL {
@@ -571,7 +571,7 @@ declare const URLSearchParams$1: any;
 
 declare class TaroWindow extends Events {
     navigator: Navigator;
-    requestAnimationFrame: typeof requestAnimationFrame | ((callback: any) => NodeJS.Timeout);
+    requestAnimationFrame: typeof requestAnimationFrame;
     cancelAnimationFrame: typeof cancelAnimationFrame;
     getComputedStyle: TGetComputedStyle;
     Date: DateConstructor;
@@ -583,7 +583,7 @@ declare class TaroWindow extends Events {
     get document(): TaroDocument;
     addEventListener(event: string, callback: (arg: any) => void): void;
     removeEventListener(event: string, callback: (arg: any) => void): void;
-    setTimeout(...args: Parameters<typeof setTimeout>): NodeJS.Timeout;
+    setTimeout(...args: Parameters<typeof setTimeout>): number;
     clearTimeout(...args: Parameters<typeof clearTimeout>): void;
 }
 
