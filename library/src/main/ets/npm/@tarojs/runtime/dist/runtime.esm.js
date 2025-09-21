@@ -4145,34 +4145,19 @@ function createPageConfig(component, pageName, data, pageConfig) {
     }
     LIFECYCLES.forEach((lifecycle) => {
         let isDefer = false;
-        let isEvent = false;
         lifecycle = lifecycle.replace(/^defer:/, () => {
             isDefer = true;
             return '';
         });
-        lifecycle = lifecycle.replace(/^events:/, () => {
-            isEvent = true;
-            return '';
-        });
-        if (isEvent && "harmony_cpp" === 'alipay') {
-            // 初始化 config.events 对象
-            if (!config.events)
-                config.events = {};
-            config.events[lifecycle] = function () {
-                return safeExecute(this.$taroPath, lifecycle, ...arguments);
-            };
-        }
-        else {
-            config[lifecycle] = function () {
-                const exec = () => safeExecute(this.$taroPath, lifecycle, ...arguments);
-                if (isDefer) {
-                    hasLoaded.then(exec);
-                }
-                else {
-                    return exec();
-                }
-            };
-        }
+        config[lifecycle] = function () {
+            const exec = () => safeExecute(this.$taroPath, lifecycle, ...arguments);
+            if (isDefer) {
+                hasLoaded.then(exec);
+            }
+            else {
+                return exec();
+            }
+        };
     });
     // onShareAppMessage 和 onShareTimeline 一样，会影响小程序右上方按钮的选项，因此不能默认注册。
     SIDE_EFFECT_LIFECYCLES.forEach(lifecycle => {

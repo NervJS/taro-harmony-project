@@ -325,7 +325,7 @@ function equipCommonApis(taro, global, apis = {}) {
     taro.getAppInfo = function () {
         return {
             platform: "harmony" || 'MiniProgram',
-            taroVersion: "4.1.7-alpha.2" || 'unknown',
+            taroVersion: "4.1.7-beta.4" || 'unknown',
             designWidth: taro.config.designWidth
         };
     };
