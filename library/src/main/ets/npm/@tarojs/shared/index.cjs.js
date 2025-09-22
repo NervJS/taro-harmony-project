@@ -565,6 +565,7 @@ const defaultMiniLifecycle = {
             'defer:onTabItemTap', // defer: 需要等页面组件挂载后再调用
             'onTitleClick',
             'onOptionMenuClick',
+            'events:onKeyboardHeight', // events: 支付宝平台需要挂载到 config.events 上
             'onPopMenuClick',
             'onPullIntercept',
             'onAddToFavorites'
@@ -1252,7 +1253,7 @@ function equipCommonApis(taro, global, apis = {}) {
     taro.getAppInfo = function () {
         return {
             platform: "harmony" || 'MiniProgram',
-            taroVersion: "4.1.7-beta.4" || 'unknown',
+            taroVersion: "4.1.7-beta.5" || 'unknown',
             designWidth: taro.config.designWidth
         };
     };
