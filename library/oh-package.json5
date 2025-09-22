@@ -1,6 +1,6 @@
 {
   "name": "@taro-oh/library",
-  "version": "4.1.7-beta.5",
+  "version": "4.1.7",
   "description": "Taro C++ Library for Harmony",
   "main": "Index.ets",
   "types": "./src/main/ets/npm/@tarojs/taro/index.d.ts",
