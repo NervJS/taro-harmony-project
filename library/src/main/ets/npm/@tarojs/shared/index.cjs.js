@@ -877,7 +877,7 @@ function getComponentsAlias(origin) {
             _num: String(num)
         };
         Object.keys(origin[key])
-            .filter(attr => !(/^bind/.test(attr)) && !['focus', 'blur'].includes(attr))
+            .filter(attr => !(/^bind/.test(attr)) && !['focus', 'blur', '$duplicateFromComponent'].includes(attr))
             .sort()
             .forEach((attr, index) => {
             obj[toCamelCase(attr)] = 'p' + index;
@@ -1253,7 +1253,7 @@ function equipCommonApis(taro, global, apis = {}) {
     taro.getAppInfo = function () {
         return {
             platform: "harmony" || 'MiniProgram',
-            taroVersion: "4.0.8-beta.3" || 'unknown',
+            taroVersion: "4.1.8-beta.3" || 'unknown',
             designWidth: taro.config.designWidth
         };
     };
