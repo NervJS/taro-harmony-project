@@ -53,15 +53,13 @@ const EXTERNAL_CLASSES = 'externalClasses';
 const EVENT_CALLBACK_RESULT = 'e_result';
 const BEHAVIORS = 'behaviors';
 const A = 'a';
-/**
- * 页面上下文切换时的行为
- */
+// 页面上下文切换时的行为
 var CONTEXT_ACTIONS;
 (function (CONTEXT_ACTIONS) {
     CONTEXT_ACTIONS["INIT"] = "0";
     CONTEXT_ACTIONS["RESTORE"] = "1";
     CONTEXT_ACTIONS["RECOVER"] = "2";
-    CONTEXT_ACTIONS["DESTORY"] = "3";
+    CONTEXT_ACTIONS["DESTROY"] = "3";
 })(CONTEXT_ACTIONS || (CONTEXT_ACTIONS = {}));
 
 const observers = [];
@@ -176,7 +174,7 @@ let MutationObserver$1 = class MutationObserver {
             this.core = new MutationObserverImpl(callback);
         }
         else {
-            if ("production" !== 'production') {
+            if ("development" !== 'production') {
                 console.warn('[Taro Warning] 若要使用 MutationObserver，请在 Taro 编译配置中设置 \'mini.runtime.enableMutationObserver: true\'');
             }
             this.core = {
@@ -312,7 +310,7 @@ class TaroHistory extends Events {
                 __classPrivateFieldSet(this, _TaroHistory_cur, ctx.cur, "f");
             }
         }, null);
-        this.on(CONTEXT_ACTIONS.DESTORY, (pageId) => {
+        this.on(CONTEXT_ACTIONS.DESTROY, (pageId) => {
             cache$1.delete(pageId);
         }, null);
         __classPrivateFieldGet(this, _TaroHistory_instances, "m", _TaroHistory_reset).call(this);
@@ -439,7 +437,7 @@ const URLSearchParams = "harmony" === 'web' ? env.window.URLSearchParams : (_a =
                         }
                     }
                     catch (err) {
-                        if ("production" !== 'production') {
+                        if ("development" !== 'production') {
                             console.warn(`[Taro warn] URL 参数 ${value} decode 异常`);
                         }
                     }
@@ -766,7 +764,7 @@ class TaroLocation extends Events {
                 __classPrivateFieldSet(this, _TaroLocation_noCheckUrl, false, "f");
             }
         }, null);
-        this.on(CONTEXT_ACTIONS.DESTORY, (pageId) => {
+        this.on(CONTEXT_ACTIONS.DESTROY, (pageId) => {
             cache.delete(pageId);
         }, null);
     }
@@ -1026,7 +1024,7 @@ class TaroWindow extends Events {
                     this[property] = globalThis[property];
                 }
                 catch (e) {
-                    if ("production" !== 'production') {
+                    if ("development" !== 'production') {
                         console.warn(`[Taro warn] window.${String(property)} 在赋值到 window 时报错`);
                     }
                 }
@@ -1043,23 +1041,23 @@ class TaroWindow extends Events {
         const _location = this.location;
         const _history = this.history;
         this.on(CONTEXT_ACTIONS.INIT, (pageId) => {
-            // 页面onload，为该页面建立新的上下文信息
+            // 页面 onload，为该页面建立新的上下文信息
             _location.trigger(CONTEXT_ACTIONS.INIT, pageId);
         }, null);
         this.on(CONTEXT_ACTIONS.RECOVER, (pageId) => {
-            // 页面onshow，恢复当前页面的上下文信息
+            // 页面 onshow，恢复当前页面的上下文信息
             _location.trigger(CONTEXT_ACTIONS.RECOVER, pageId);
             _history.trigger(CONTEXT_ACTIONS.RECOVER, pageId);
         }, null);
         this.on(CONTEXT_ACTIONS.RESTORE, (pageId) => {
-            // 页面onhide，缓存当前页面的上下文信息
+            // 页面 onhide，缓存当前页面的上下文信息
             _location.trigger(CONTEXT_ACTIONS.RESTORE, pageId);
             _history.trigger(CONTEXT_ACTIONS.RESTORE, pageId);
         }, null);
-        this.on(CONTEXT_ACTIONS.DESTORY, (pageId) => {
-            // 页面onunload，清除当前页面的上下文信息
-            _location.trigger(CONTEXT_ACTIONS.DESTORY, pageId);
-            _history.trigger(CONTEXT_ACTIONS.DESTORY, pageId);
+        this.on(CONTEXT_ACTIONS.DESTROY, (pageId) => {
+            // 页面 onunload，清除当前页面的上下文信息
+            _location.trigger(CONTEXT_ACTIONS.DESTROY, pageId);
+            _history.trigger(CONTEXT_ACTIONS.DESTROY, pageId);
         }, null);
     }
     get document() {
@@ -1156,7 +1154,7 @@ function isHasExtractProp(el) {
  * @param node 当前组件
  * @param type 事件类型
  */
-function isParentBinded(node, type) {
+function isParentBound(node, type) {
     var _a;
     while ((node = (node === null || node === void 0 ? void 0 : node.parentElement) || null)) {
         if (!node || node.nodeName === ROOT_STR || node.nodeName === 'root-portal') {
@@ -1422,7 +1420,7 @@ class TaroEventTarget {
             this.addEventListener(type, wrapper, Object.assign(Object.assign({}, options), { once: false }));
             return;
         }
-        "production" !== 'production' && warn(isCapture, 'Taro 暂未实现 event 的 capture 特性。');
+        "development" !== 'production' && warn(isCapture, 'Taro 暂未实现 event 的 capture 特性。');
         // 某些框架，如 PReact 有委托的机制，handler 始终是同一个函数
         // 这会导致多层停止冒泡失败：view -> view(handler.stop = false) -> view(handler.stop = true)
         // 这样解决：view -> view(handlerA.stop = false) -> view(handlerB.stop = false)
@@ -1459,7 +1457,7 @@ class TaroEventTarget {
             if (item === handler || item.oldHandler === handler)
                 return true;
         });
-        "production" !== 'production' && warn(index === -1, `事件: '${type}' 没有注册在 DOM 中，因此不会被移除。`);
+        "development" !== 'production' && warn(index === -1, `事件: '${type}' 没有注册在 DOM 中，因此不会被移除。`);
         handlers.splice(index, 1);
     }
     isAnyEventBinded() {
@@ -1958,7 +1956,7 @@ function enqueueUpdate(obj) {
     }
 }
 function setStyle(newVal, styleKey) {
-    "production" !== 'production' && warn(isString(newVal) && newVal.length > PROPERTY_THRESHOLD, `Style 属性 ${styleKey} 的值数据量过大，可能会影响渲染性能，考虑使用 CSS 类或其它方案替代。`);
+    "development" !== 'production' && warn(isString(newVal) && newVal.length > PROPERTY_THRESHOLD, `Style 属性 ${styleKey} 的值数据量过大，可能会影响渲染性能，考虑使用 CSS 类或其它方案替代。`);
     const old = this[styleKey];
     if (old === newVal)
         return;
@@ -2219,7 +2217,7 @@ class TaroElement extends TaroNode {
         this.setAttribute(FOCUS, false);
     }
     setAttribute(qualifiedName, value) {
-        "production" !== 'production' && warn(isString(value) && value.length > PROPERTY_THRESHOLD, `元素 ${this.nodeName} 的 ${qualifiedName} 属性值数据量过大，可能会影响渲染性能。考虑降低图片转为 base64 的阈值或在 CSS 中使用 base64。`);
+        "development" !== 'production' && warn(isString(value) && value.length > PROPERTY_THRESHOLD, `元素 ${this.nodeName} 的 ${qualifiedName} 属性值数据量过大，可能会影响渲染性能。考虑降低图片转为 base64 的阈值或在 CSS 中使用 base64。`);
         const isPureView = this.nodeName === VIEW && !isHasExtractProp(this) && !this.isAnyEventBinded();
         if (qualifiedName !== STYLE) {
             MutationObserver$1.record({
@@ -2512,7 +2510,7 @@ function isWordEnd(cursor, wordBegin, html) {
     if (!isWhitespaceChar(html.charAt(cursor)))
         return false;
     const len = html.length;
-    // backwrad
+    // backward
     for (let i = cursor - 1; i > wordBegin; i--) {
         const char = html.charAt(i);
         if (!isWhitespaceChar(char)) {
@@ -2531,7 +2529,7 @@ function isWordEnd(cursor, wordBegin, html) {
         }
     }
 }
-class Scaner {
+class Scanner {
     constructor(html) {
         this.tokens = [];
         this.position = initPosition();
@@ -3123,7 +3121,7 @@ function format(children, document, styleOptions, parent) {
 function parser(html, document) {
     const styleTagParser = new StyleTagParser();
     html = styleTagParser.extractStyle(html);
-    const tokens = new Scaner(html).scan();
+    const tokens = new Scanner(html).scan();
     const root = { tagName: '', children: [], type: 'element', attributes: [] };
     const state = { tokens, cursor: 0, stack: [root] };
     parse(state);
@@ -3494,7 +3492,7 @@ function eventHandler(event) {
         if (hooks.isExist('batchedEventUpdates')) {
             const type = event.type;
             if (!hooks.call('isBubbleEvents', type) ||
-                !isParentBinded(node, type) ||
+                !isParentBound(node, type) ||
                 (type === TOUCHMOVE && !!node.props.catchMove)) {
                 // 最上层组件统一 batchUpdate
                 hooks.call('batchedEventUpdates', () => {
@@ -3721,7 +3719,7 @@ class TaroRootElement extends TaroElement {
             // custom-wrapper setData
             if (customWrapperCount) {
                 customWrapperMap.forEach((data, ctx) => {
-                    if ("production" !== 'production' && options.debug) {
+                    if ("development" !== 'production' && options.debug) {
                         // eslint-disable-next-line no-console
                         console.log('custom wrapper setData: ', data);
                     }
@@ -3730,7 +3728,7 @@ class TaroRootElement extends TaroElement {
             }
             // page setData
             if (isNeedNormalUpdate) {
-                if ("production" !== 'production' && options.debug) {
+                if ("development" !== 'production' && options.debug) {
                     // eslint-disable-next-line no-console
                     console.log('page setData:', normalUpdate);
                 }
@@ -4080,7 +4078,7 @@ function createPageConfig(component, pageName, data, pageConfig) {
             const $taroPath = this.$taroPath;
             // 销毁当前页面的上下文信息
             if ("harmony" !== 'web') {
-                taroWindowProvider.trigger(CONTEXT_ACTIONS.DESTORY, $taroPath);
+                taroWindowProvider.trigger(CONTEXT_ACTIONS.DESTROY, $taroPath);
             }
             // 触发onUnload生命周期
             safeExecute($taroPath, ONUNLOAD);
@@ -5104,5 +5102,5 @@ if ("disabled" !== 'disabled' && "harmony" !== 'web') {
     handlePolyfill();
 }
 
-export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver$1 as MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBinded, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
+export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver$1 as MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
 //# sourceMappingURL=runtime.esm.js.map
