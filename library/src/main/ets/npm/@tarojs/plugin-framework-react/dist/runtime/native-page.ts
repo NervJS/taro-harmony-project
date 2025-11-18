@@ -328,7 +328,7 @@ export function createNativePageConfig (
     [ONUNLOAD] () {
       const $taroPath = this.$taroPath
       // 销毁当前页面的上下文信息
-      window.trigger(CONTEXT_ACTIONS.DESTROY, $taroPath)
+      window.trigger(CONTEXT_ACTIONS.DESTORY, $taroPath)
       // 触发onUnload生命周期
       safeExecute($taroPath, ONUNLOAD)
 

@@ -565,7 +565,6 @@ const defaultMiniLifecycle = {
             'defer:onTabItemTap', // defer: 需要等页面组件挂载后再调用
             'onTitleClick',
             'onOptionMenuClick',
-            'events:onKeyboardHeight', // events: 支付宝平台需要挂载到 config.events 上
             'onPopMenuClick',
             'onPullIntercept',
             'onAddToFavorites'
@@ -877,7 +876,7 @@ function getComponentsAlias(origin) {
             _num: String(num)
         };
         Object.keys(origin[key])
-            .filter(attr => !(/^bind/.test(attr)) && !['focus', 'blur', '$duplicateFromComponent'].includes(attr))
+            .filter(attr => !(/^bind/.test(attr)) && !['focus', 'blur'].includes(attr))
             .sort()
             .forEach((attr, index) => {
             obj[toCamelCase(attr)] = 'p' + index;
@@ -1253,7 +1252,7 @@ function equipCommonApis(taro, global, apis = {}) {
     taro.getAppInfo = function () {
         return {
             platform: "harmony" || 'MiniProgram',
-            taroVersion: "4.1.9-beta.1" || 'unknown',
+            taroVersion: "4.1.5-beta.8" || 'unknown',
             designWidth: taro.config.designWidth
         };
     };

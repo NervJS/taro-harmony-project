@@ -53,13 +53,15 @@ const EXTERNAL_CLASSES = 'externalClasses';
 const EVENT_CALLBACK_RESULT = 'e_result';
 const BEHAVIORS = 'behaviors';
 const A = 'a';
-// 页面上下文切换时的行为
+/**
+ * 页面上下文切换时的行为
+ */
 var CONTEXT_ACTIONS;
 (function (CONTEXT_ACTIONS) {
     CONTEXT_ACTIONS["INIT"] = "0";
     CONTEXT_ACTIONS["RESTORE"] = "1";
     CONTEXT_ACTIONS["RECOVER"] = "2";
-    CONTEXT_ACTIONS["DESTROY"] = "3";
+    CONTEXT_ACTIONS["DESTORY"] = "3";
 })(CONTEXT_ACTIONS || (CONTEXT_ACTIONS = {}));
 
 const observers = [];
@@ -310,7 +312,7 @@ class TaroHistory extends Events {
                 __classPrivateFieldSet(this, _TaroHistory_cur, ctx.cur, "f");
             }
         }, null);
-        this.on(CONTEXT_ACTIONS.DESTROY, (pageId) => {
+        this.on(CONTEXT_ACTIONS.DESTORY, (pageId) => {
             cache$1.delete(pageId);
         }, null);
         __classPrivateFieldGet(this, _TaroHistory_instances, "m", _TaroHistory_reset).call(this);
@@ -764,7 +766,7 @@ class TaroLocation extends Events {
                 __classPrivateFieldSet(this, _TaroLocation_noCheckUrl, false, "f");
             }
         }, null);
-        this.on(CONTEXT_ACTIONS.DESTROY, (pageId) => {
+        this.on(CONTEXT_ACTIONS.DESTORY, (pageId) => {
             cache.delete(pageId);
         }, null);
     }
@@ -1041,23 +1043,23 @@ class TaroWindow extends Events {
         const _location = this.location;
         const _history = this.history;
         this.on(CONTEXT_ACTIONS.INIT, (pageId) => {
-            // 页面 onload，为该页面建立新的上下文信息
+            // 页面onload，为该页面建立新的上下文信息
             _location.trigger(CONTEXT_ACTIONS.INIT, pageId);
         }, null);
         this.on(CONTEXT_ACTIONS.RECOVER, (pageId) => {
-            // 页面 onshow，恢复当前页面的上下文信息
+            // 页面onshow，恢复当前页面的上下文信息
             _location.trigger(CONTEXT_ACTIONS.RECOVER, pageId);
             _history.trigger(CONTEXT_ACTIONS.RECOVER, pageId);
         }, null);
         this.on(CONTEXT_ACTIONS.RESTORE, (pageId) => {
-            // 页面 onhide，缓存当前页面的上下文信息
+            // 页面onhide，缓存当前页面的上下文信息
             _location.trigger(CONTEXT_ACTIONS.RESTORE, pageId);
             _history.trigger(CONTEXT_ACTIONS.RESTORE, pageId);
         }, null);
-        this.on(CONTEXT_ACTIONS.DESTROY, (pageId) => {
-            // 页面 onunload，清除当前页面的上下文信息
-            _location.trigger(CONTEXT_ACTIONS.DESTROY, pageId);
-            _history.trigger(CONTEXT_ACTIONS.DESTROY, pageId);
+        this.on(CONTEXT_ACTIONS.DESTORY, (pageId) => {
+            // 页面onunload，清除当前页面的上下文信息
+            _location.trigger(CONTEXT_ACTIONS.DESTORY, pageId);
+            _history.trigger(CONTEXT_ACTIONS.DESTORY, pageId);
         }, null);
     }
     get document() {
@@ -1154,7 +1156,7 @@ function isHasExtractProp(el) {
  * @param node 当前组件
  * @param type 事件类型
  */
-function isParentBound(node, type) {
+function isParentBinded(node, type) {
     var _a;
     while ((node = (node === null || node === void 0 ? void 0 : node.parentElement) || null)) {
         if (!node || node.nodeName === ROOT_STR || node.nodeName === 'root-portal') {
@@ -2510,7 +2512,7 @@ function isWordEnd(cursor, wordBegin, html) {
     if (!isWhitespaceChar(html.charAt(cursor)))
         return false;
     const len = html.length;
-    // backward
+    // backwrad
     for (let i = cursor - 1; i > wordBegin; i--) {
         const char = html.charAt(i);
         if (!isWhitespaceChar(char)) {
@@ -2529,7 +2531,7 @@ function isWordEnd(cursor, wordBegin, html) {
         }
     }
 }
-class Scanner {
+class Scaner {
     constructor(html) {
         this.tokens = [];
         this.position = initPosition();
@@ -3121,7 +3123,7 @@ function format(children, document, styleOptions, parent) {
 function parser(html, document) {
     const styleTagParser = new StyleTagParser();
     html = styleTagParser.extractStyle(html);
-    const tokens = new Scanner(html).scan();
+    const tokens = new Scaner(html).scan();
     const root = { tagName: '', children: [], type: 'element', attributes: [] };
     const state = { tokens, cursor: 0, stack: [root] };
     parse(state);
@@ -3492,7 +3494,7 @@ function eventHandler(event) {
         if (hooks.isExist('batchedEventUpdates')) {
             const type = event.type;
             if (!hooks.call('isBubbleEvents', type) ||
-                !isParentBound(node, type) ||
+                !isParentBinded(node, type) ||
                 (type === TOUCHMOVE && !!node.props.catchMove)) {
                 // 最上层组件统一 batchUpdate
                 hooks.call('batchedEventUpdates', () => {
@@ -4078,7 +4080,7 @@ function createPageConfig(component, pageName, data, pageConfig) {
             const $taroPath = this.$taroPath;
             // 销毁当前页面的上下文信息
             if ("harmony" !== 'web') {
-                taroWindowProvider.trigger(CONTEXT_ACTIONS.DESTROY, $taroPath);
+                taroWindowProvider.trigger(CONTEXT_ACTIONS.DESTORY, $taroPath);
             }
             // 触发onUnload生命周期
             safeExecute($taroPath, ONUNLOAD);
@@ -4143,34 +4145,19 @@ function createPageConfig(component, pageName, data, pageConfig) {
     }
     LIFECYCLES.forEach((lifecycle) => {
         let isDefer = false;
-        let isEvent = false;
         lifecycle = lifecycle.replace(/^defer:/, () => {
             isDefer = true;
             return '';
         });
-        lifecycle = lifecycle.replace(/^events:/, () => {
-            isEvent = true;
-            return '';
-        });
-        if (isEvent && "harmony_cpp" === 'alipay') {
-            // 初始化 config.events 对象
-            if (!config.events)
-                config.events = {};
-            config.events[lifecycle] = function () {
-                return safeExecute(this.$taroPath, lifecycle, ...arguments);
-            };
-        }
-        else {
-            config[lifecycle] = function () {
-                const exec = () => safeExecute(this.$taroPath, lifecycle, ...arguments);
-                if (isDefer) {
-                    hasLoaded.then(exec);
-                }
-                else {
-                    return exec();
-                }
-            };
-        }
+        config[lifecycle] = function () {
+            const exec = () => safeExecute(this.$taroPath, lifecycle, ...arguments);
+            if (isDefer) {
+                hasLoaded.then(exec);
+            }
+            else {
+                return exec();
+            }
+        };
     });
     // onShareAppMessage 和 onShareTimeline 一样，会影响小程序右上方按钮的选项，因此不能默认注册。
     SIDE_EFFECT_LIFECYCLES.forEach(lifecycle => {
@@ -5102,5 +5089,5 @@ if ("disabled" !== 'disabled' && "harmony" !== 'web') {
     handlePolyfill();
 }
 
-export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver$1 as MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
+export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver$1 as MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBinded, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
 //# sourceMappingURL=runtime.esm.js.map

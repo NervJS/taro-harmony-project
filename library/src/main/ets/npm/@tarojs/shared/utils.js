@@ -165,7 +165,7 @@ function getComponentsAlias(origin) {
             _num: String(num)
         };
         Object.keys(origin[key])
-            .filter(attr => !(/^bind/.test(attr)) && !['focus', 'blur', '$duplicateFromComponent'].includes(attr))
+            .filter(attr => !(/^bind/.test(attr)) && !['focus', 'blur'].includes(attr))
             .sort()
             .forEach((attr, index) => {
             obj[toCamelCase(attr)] = 'p' + index;

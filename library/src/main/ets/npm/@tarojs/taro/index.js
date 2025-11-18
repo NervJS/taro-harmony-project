@@ -6,7 +6,6 @@ import {
   useLaunch,
   useLoad,
   useOptionMenuClick,
-  useKeyboardHeight,
   usePageNotFound,
   usePageScroll,
   usePullDownRefresh,
@@ -5064,7 +5063,7 @@ function getAppInfo() {
     const config = Current.taro?.config;
     return {
         platform: "harmony" || PLATFORM_TYPE.HARMONY,
-        taroVersion: "4.1.9-beta.1" || 'unknown',
+        taroVersion: "4.1.5-beta.8" || 'unknown',
         designWidth: config?.designWidth,
     };
 }
@@ -5087,7 +5086,6 @@ taro.useError = useError
 taro.useLaunch = useLaunch
 taro.useLoad = useLoad
 taro.useOptionMenuClick = useOptionMenuClick
-taro.useKeyboardHeight = useKeyboardHeight
 taro.usePageNotFound = usePageNotFound
 taro.usePageScroll = usePageScroll
 taro.usePullDownRefresh = usePullDownRefresh
@@ -5113,7 +5111,6 @@ export {
   useLaunch,
   useLoad,
   useOptionMenuClick,
-  useKeyboardHeight,
   usePageNotFound,
   usePageScroll,
   usePullDownRefresh,
