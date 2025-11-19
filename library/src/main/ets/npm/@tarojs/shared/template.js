@@ -511,6 +511,7 @@ const defaultMiniLifecycle = {
             'defer:onTabItemTap', // defer: 需要等页面组件挂载后再调用
             'onTitleClick',
             'onOptionMenuClick',
+            'events:onKeyboardHeight', // events: 支付宝平台需要挂载到 config.events 上
             'onPopMenuClick',
             'onPullIntercept',
             'onAddToFavorites'
@@ -721,7 +722,7 @@ function getComponentsAlias(origin) {
             _num: String(num)
         };
         Object.keys(origin[key])
-            .filter(attr => !(/^bind/.test(attr)) && !['focus', 'blur'].includes(attr))
+            .filter(attr => !(/^bind/.test(attr)) && !['focus', 'blur', '$duplicateFromComponent'].includes(attr))
             .sort()
             .forEach((attr, index) => {
             obj[toCamelCase(attr)] = 'p' + index;
@@ -862,6 +863,7 @@ ${this.buildXsImportTemplate()}<template is="{{'tmpl_0_' + item.${"nn" /* Shortc
     }
     createMiniComponents(components) {
         const result = Object.create(null);
+        const skipProps = ['$duplicateFromComponent'];
         for (const key in components) {
             if (hasOwn(components, key)) {
                 let component = components[key];
@@ -872,7 +874,7 @@ ${this.buildXsImportTemplate()}<template is="{{'tmpl_0_' + item.${"nn" /* Shortc
                     component = this.modifyCompProps(compName, component);
                 }
                 for (let prop in component) {
-                    if (hasOwn(component, prop)) {
+                    if (hasOwn(component, prop) && !skipProps.includes(prop)) {
                         const propInCamelCase = toCamelCase(prop);
                         const propAlias = componentAlias[propInCamelCase] || propInCamelCase;
                         let propValue = component[prop];
@@ -1014,6 +1016,10 @@ ${this.buildXsImportTemplate()}<template is="{{'tmpl_0_' + item.${"nn" /* Shortc
         }, '');
     }
     buildComponentTemplate(comp, level) {
+        const { $duplicateFromComponent } = this.internalComponents[capitalize(toCamelCase(comp.nodeName))] || {};
+        if ($duplicateFromComponent) {
+            comp.nodeName = toDashed($duplicateFromComponent);
+        }
         return this.focusComponents.has(comp.nodeName)
             ? this.buildFocusComponentTemplate(comp, level)
             : this.buildStandardComponentTemplate(comp, level);
