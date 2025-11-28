@@ -561,7 +561,7 @@ declare module '../../index' {
     }
     interface RemoveMarkersOption {
       /** marker 的 id 集合。 */
-      markerIds: string[]
+      markerIds: number[]
       /** 接口调用结束的回调函数（调用成功、失败都会执行） */
       complete?: (res: TaroGeneral.CallbackResult) => void
       /** 接口调用失败的回调函数 */
@@ -610,7 +610,7 @@ declare module '../../index' {
       /** 聚合簇的坐标 */
       center: LatLng
       /** 该聚合簇内的点标记数据数组 */
-      markerIds: string[]
+      markerIds: number[]
     }
     interface LatLng {
       /** 纬度值 */
