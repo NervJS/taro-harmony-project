@@ -5064,7 +5064,7 @@ function getAppInfo() {
     const config = Current.taro?.config;
     return {
         platform: "harmony" || PLATFORM_TYPE.HARMONY,
-        taroVersion: "4.1.9-beta.6" || 'unknown',
+        taroVersion: "4.1.9-beta.7" || 'unknown',
         designWidth: config?.designWidth,
     };
 }
