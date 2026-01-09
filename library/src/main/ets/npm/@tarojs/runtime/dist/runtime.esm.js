@@ -4141,6 +4141,7 @@ function createPageConfig(component, pageName, data, pageConfig) {
             return EventChannel.pageChannel;
         };
     }
+    const isSWAN = "harmony_cpp" === 'swan'; // 百度小程序
     LIFECYCLES.forEach((lifecycle) => {
         let isDefer = false;
         let isEvent = false;
@@ -4163,6 +4164,9 @@ function createPageConfig(component, pageName, data, pageConfig) {
         else {
             config[lifecycle] = function () {
                 const exec = () => safeExecute(this.$taroPath, lifecycle, ...arguments);
+                if (isSWAN) {
+                    return exec();
+                }
                 if (isDefer) {
                     hasLoaded.then(exec);
                 }
