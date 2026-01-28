@@ -766,7 +766,7 @@ const hasOwn = (val, key) => hasOwnProperty.call(val, key);
  */
 function ensure(condition, msg) {
     if (!condition) {
-        if ("production" !== 'production') {
+        if ("development" !== 'production') {
             const reportIssue = '\n如有疑问，请提交 issue 至：https://github.com/nervjs/taro/issues';
             throw new Error(msg + reportIssue);
         }
@@ -776,7 +776,7 @@ function ensure(condition, msg) {
     }
 }
 function warn(condition, msg) {
-    if ("production" !== 'production') {
+    if ("development" !== 'production') {
         if (condition) {
             console.warn(`[taro warn] ${msg}`);
         }
@@ -1055,7 +1055,7 @@ function getCanIUseWebp(taro) {
         var _a;
         const res = (_a = taro.getSystemInfoSync) === null || _a === void 0 ? void 0 : _a.call(taro);
         if (!res) {
-            if ("production" !== 'production') {
+            if ("development" !== 'production') {
                 console.error('不支持 API canIUseWebp');
             }
             return false;
@@ -1253,7 +1253,7 @@ function equipCommonApis(taro, global, apis = {}) {
     taro.getAppInfo = function () {
         return {
             platform: "harmony" || 'MiniProgram',
-            taroVersion: "4.1.11" || 'unknown',
+            taroVersion: "4.1.12-beta.0" || 'unknown',
             designWidth: taro.config.designWidth
         };
     };
