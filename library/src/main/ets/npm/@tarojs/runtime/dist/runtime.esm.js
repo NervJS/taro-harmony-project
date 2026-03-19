@@ -1,4 +1,4 @@
-import { noop, hooks, Events, EMPTY_OBJ, isNumber, isString, isArray, isUndefined, warn, isFunction, getComponentsAlias as getComponentsAlias$1, internalComponents, toCamelCase, isObject, ensure, isNull, toDashed, PLATFORM_TYPE, controlledComponent, EventChannel } from '../../shared';
+import { noop, hooks, Events, EMPTY_OBJ, isNumber, isString, isArray, isUndefined, warn, isFunction, getComponentsAlias as getComponentsAlias$1, internalComponents, toCamelCase, isObject, ensure, isNull, toDashed, isEnableTTDom, PLATFORM_TYPE, controlledComponent, DEFAULT_COMPONENTS, TT_SPECIFIC_COMPONENTS, EventChannel } from '../../shared';
 export { Events, hooks } from '../../shared';
 import { __classPrivateFieldSet, __classPrivateFieldGet } from '../../../tslib';
 
@@ -3232,7 +3232,13 @@ function setInnerHTML(element, html) {
     while (element.firstChild) {
         element.removeChild(element.firstChild);
     }
-    const children = parser(html, element.ownerDocument);
+    let { ownerDocument } = element;
+    if ("harmony_cpp" === 'tt' && isEnableTTDom()) {
+        if ('appDocument' in tt) {
+            ownerDocument = tt.appDocument;
+        }
+    }
+    const children = parser(html, ownerDocument);
     for (let i = 0; i < children.length; i++) {
         element.appendChild(children[i]);
     }
@@ -3514,6 +3520,14 @@ function eventHandler(event) {
             return getEventCBResult(event);
         }
     }
+}
+function eventHandlerTTDom(ele, listener, event) {
+    Object.assign(event, {
+        mpEvent: event,
+        bubbles: true,
+        cancelable: true,
+    });
+    listener(event, ele);
 }
 
 class FormElement extends TaroElement {
@@ -3946,8 +3960,140 @@ function createDocument() {
     doc.body = body;
     return doc;
 }
+function createTTDomDocument() {
+    var _a;
+    const document = tt === null || tt === void 0 ? void 0 : tt.appDocument;
+    if (!document) {
+        throw new Error('tt.appDocument is not found');
+    }
+    const html = document.createElement(HTML);
+    const head = document.createElement(HEAD);
+    const body = document.createElement(BODY);
+    const app = document.createElement(APP);
+    app.id = APP;
+    const container = document.createElement(CONTAINER);
+    const emptyFunction = () => { };
+    document.childNodes.push(html);
+    html.childNodes.push(head, body);
+    body.childNodes.push(container);
+    container.childNodes.push(app);
+    document.documentElement = html;
+    document.head = head;
+    document.body = body;
+    document.appElement = app;
+    let builtInComponents = (_a = tt === null || tt === void 0 ? void 0 : tt.getBuiltInComponents) === null || _a === void 0 ? void 0 : _a.call(tt);
+    if (Array.isArray(builtInComponents)) {
+        builtInComponents = new Set(builtInComponents);
+    }
+    else if (!(builtInComponents instanceof Set)) {
+        builtInComponents = new Set([...DEFAULT_COMPONENTS, ...TT_SPECIFIC_COMPONENTS]);
+    }
+    document.getElementById = function getElementById(id) {
+        if (id === 'app') {
+            return app;
+        }
+        else {
+            return Object.getPrototypeOf(this).getElementById.call(this, id);
+        }
+    };
+    document.getLastPage = function getLastPage() {
+        let last;
+        for (const v of this._pageDocumentMap.values())
+            last = v;
+        return last;
+    };
+    document.createElement = function (type, ...args) {
+        if (type === 'root') {
+            return this.getLastPage();
+        }
+        else {
+            const el = builtInComponents.has(type)
+                ? Object.getPrototypeOf(this).createElement.call(this, type, ...args)
+                : Object.getPrototypeOf(this).createNativeComponent.call(this, type, {
+                    __tt__inner__options__: {
+                        name: type,
+                    },
+                });
+            // 给元素加上 scopeId
+            el.setAttribute('class', '');
+            // 保存原始的 setAttribute 和 removeAttribute
+            const originalSetAttribute = el.setAttribute.bind(el);
+            const originalRemoveAttribute = el.removeAttribute.bind(el);
+            // 拦截 setAttribute 来处理 catchMove
+            el.setAttribute = function (name, value) {
+                const result = originalSetAttribute(name, value);
+                // 处理 catchMove 属性
+                if (name === 'catchMove' && value) {
+                    el.addEventListener('catchtouchmove', emptyFunction);
+                }
+                return result;
+            };
+            // 拦截 removeAttribute 来处理 catchMove
+            el.removeAttribute = function (name) {
+                const oldValue = el.getAttribute(name);
+                // 处理 catchMove 属性
+                if (name === 'catchMove' && oldValue) {
+                    el.removeEventListener('catchtouchmove', emptyFunction);
+                }
+                return originalRemoveAttribute(name);
+            };
+            if ("react" === 'preact') {
+                const ttEventListener = el.addEventListener.bind(el);
+                const ttRemoveEventListener = el.removeEventListener.bind(el);
+                el.addEventListener = function (type, listener) {
+                    if (type === 'click') {
+                        type = 'tap';
+                    }
+                    const bindEventName = type.startsWith('bind') || type.startsWith('catch') ? type : `bind${type}`;
+                    // 创建包装函数
+                    const wrapper = (event) => {
+                        const type = event.type;
+                        // 对齐 modifyMpEvent 处理逻辑
+                        if (type === 'tap') {
+                            event.type = 'click';
+                        }
+                        else if (type === 'focus') {
+                            event.type = 'focusin';
+                        }
+                        else if (type === 'blur') {
+                            event.type = 'focusout';
+                        }
+                        Object.assign(event, {
+                            mpEvent: event,
+                            bubbles: true,
+                            cancelable: true,
+                        });
+                        listener.call(el, event);
+                    };
+                    // 保存包装函数的引用，用于后续移除
+                    if (!el.__eventWrappers) {
+                        el.__eventWrappers = new WeakMap();
+                    }
+                    el.__eventWrappers.set(listener, wrapper);
+                    ttEventListener(bindEventName, wrapper);
+                };
+                el.removeEventListener = function (type, listener) {
+                    var _a;
+                    if (type === 'click') {
+                        type = 'tap';
+                    }
+                    const bindEventName = type.startsWith('bind') || type.startsWith('catch') ? type : `bind${type}`;
+                    // 获取之前保存的包装函数
+                    const wrapper = (_a = el.__eventWrappers) === null || _a === void 0 ? void 0 : _a.get(listener);
+                    if (wrapper) {
+                        ttRemoveEventListener(bindEventName, wrapper);
+                        delete el.__eventWrappers[listener];
+                    }
+                };
+            }
+            return el;
+        }
+    };
+    return document;
+}
 // Note: 小程序端 vite 打包成 commonjs，const document = xxx 会报错，所以把 document 改为 taroDocumentProvider
-const taroDocumentProvider = "harmony" === 'web' ? env.document : (env.document = createDocument());
+const taroDocumentProvider = "harmony" === 'web' ? env.document : (env.document =
+    isEnableTTDom() ? createTTDomDocument() : createDocument());
 
 // for Vue3
 class SVGElement extends TaroElement {
@@ -4054,13 +4200,23 @@ function createPageConfig(component, pageName, data, pageConfig) {
             }
             const mount = () => {
                 Current.app.mount(component, $taroPath, () => {
-                    pageElement = env.document.getElementById($taroPath);
+                    if ("harmony_cpp" === 'tt' && isEnableTTDom()) {
+                        pageElement = env.document.getPageDocumentById(this.__webviewId__);
+                    }
+                    else {
+                        pageElement = env.document.getElementById($taroPath);
+                    }
                     ensure(pageElement !== null, '没有找到页面实例。');
                     safeExecute($taroPath, ON_LOAD, this.$taroParams);
                     loadResolver();
                     if ("harmony" !== 'web') {
                         pageElement.ctx = this;
-                        pageElement.performUpdate(true, cb);
+                        if ("harmony_cpp" === 'tt' && isEnableTTDom()) {
+                            pageElement.sync();
+                        }
+                        else {
+                            pageElement.performUpdate(true, cb);
+                        }
                     }
                     else {
                         isFunction(cb) && cb();
@@ -4221,7 +4377,9 @@ function createComponentConfig(component, componentName, data) {
                 safeExecute(path, ON_LOAD);
                 if ("harmony" !== 'web') {
                     componentElement.ctx = this;
-                    componentElement.performUpdate(true);
+                    if ("harmony_cpp" !== 'tt' || !isEnableTTDom()) {
+                        componentElement.performUpdate(true);
+                    }
                 }
             });
         },
@@ -4254,6 +4412,9 @@ function createRecursiveComponentConfig(componentName) {
         ? {
             [ATTACHED]() {
                 var _a, _b;
+                if ("harmony_cpp" === 'tt' && isEnableTTDom()) {
+                    return;
+                }
                 const componentId = ((_a = this.data.i) === null || _a === void 0 ? void 0 : _a.sid) || ((_b = this.props.i) === null || _b === void 0 ? void 0 : _b.sid);
                 if (isString(componentId)) {
                     customWrapperCache.set(componentId, this);
@@ -4265,6 +4426,9 @@ function createRecursiveComponentConfig(componentName) {
             },
             [DETACHED]() {
                 var _a, _b;
+                if ("harmony_cpp" === 'tt' && isEnableTTDom()) {
+                    return;
+                }
                 const componentId = ((_a = this.data.i) === null || _a === void 0 ? void 0 : _a.sid) || ((_b = this.props.i) === null || _b === void 0 ? void 0 : _b.sid);
                 if (isString(componentId)) {
                     customWrapperCache.delete(componentId);
@@ -5106,5 +5270,5 @@ if ("disabled" !== 'disabled' && "harmony" !== 'web') {
     handlePolyfill();
 }
 
-export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver$1 as MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
+export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver$1 as MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventHandlerTTDom, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, setInnerHTML, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
 //# sourceMappingURL=runtime.esm.js.map

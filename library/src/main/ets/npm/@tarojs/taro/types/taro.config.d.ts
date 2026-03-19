@@ -471,15 +471,6 @@ declare module './index' {
      */
     subPackages?: SubPackage[]
     subpackages?: SubPackage[]
-    /** 子分包独立模板配置（用于 newBlended 模式）
-     * @since 4.1.x
-     */
-    subPackageIndie?: {
-      /** 主入口分包根路径（相对于 sourceDir），runtime chunks 将生成到此目录 */
-      mainPackageRoot: string
-      /** 子组件分包根路径列表 */
-      subPackageRoots: string[]
-    }
     /** Worker 代码放置的目录
      * 使用 Worker 处理多线程任务时，设置 Worker 代码放置的目录
      * @since 1.9.90
@@ -693,6 +684,11 @@ declare module './index' {
      * @supported alipay
      */
     behavior?: Behavior
+    /**
+     * 用于开启抖音小程序的 tt-dom 渲染模式
+     * @supported tt
+     */
+    enableTTDom?: boolean
   }
 
   interface Config extends PageConfig, AppConfig {
