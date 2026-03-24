@@ -1,5 +1,42 @@
 # 变更记录
 
+## [4.1.12-beta.18] - 2026-03-24
+
+### 🐛 Bug Fixes
+
+- **C-API**: transform-origin第三个参数
+- **C-API(lint)**: blocks lines format
+- **C-API(helper)**: 文件下载引用修复
+- **C-API**: 新增 aspect-ratio 修复TransformOrigin三个值不生效
+- **C-API**: 修复createAnimation创建的动画不生效的问题
+- **C-API(text)**: 修复文本刷新问题
+- **C-API**: fmt runtime
+- **C-API**: loadImage: avoid file write race, support mem cache
+- **C-API**: header include
+- **C-API**: add licenserc
+- **HAR**: update desc & license
+- **HAR**: add bisheng
+- **HAR**: build option
+- **HAR**: rm main page ets
+
+### ✨ Features
+
+- **C-API**: use https for github action
+- **C-API**: 更新 cpp 逻辑至最新
+- **C-API**: format cpp code
+- **C-API**: add format.yml
+- **C-API**: add license
+- **C-API**: support loadImage interface
+- **HAR**: update profile
+- **HAR**: add cpp submodule
+
+### 📝 Other Changes
+
+- **C-API**: 删除FileDownloader中锁逻辑
+- **C-API**: Refactor NapiGetter.cpp to use Optional::value_or instead of manual has_value checks
+- **C-API(image)**: use image loader
+- **C-API**: Initial commit
+
 ## [4.1.12-alpha.6] - 2026-03-24
 
 ### 🐛 Bug Fixes

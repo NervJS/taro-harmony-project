@@ -365,117 +365,6 @@ const PLATFORM_CONFIG_MAP = {
         type: PLATFORM_TYPE.QUICK
     },
 };
-const TT_SPECIFIC_COMPONENTS = new Set([
-    'page-container',
-    'slot',
-    'custom-wrapper',
-    'clue-order-form',
-    'aweme-group',
-    'pay-button',
-    'address-area',
-    'consume-card',
-    'aweme-data',
-    'rate-button',
-    'store-area',
-    'inline-payment-panel',
-    'aweme-user-card',
-    'aweme-live-book',
-    'draw-ad',
-    'lynx-view',
-    'flow-ad',
-    'ai-agent-chat',
-    'component'
-]);
-const DEFAULT_COMPONENTS = new Set([
-    'view',
-    'scroll-view',
-    'swiper',
-    'cover-view',
-    'cover-image',
-    'icon',
-    'text',
-    'rich-text',
-    'progress',
-    'button',
-    'checkbox',
-    'form',
-    'input',
-    'label',
-    'picker',
-    'picker-view',
-    'picker-view-column',
-    'radio',
-    'radio-group',
-    'checkbox-group',
-    'slider',
-    'switch',
-    'textarea',
-    'navigator',
-    'audio',
-    'image',
-    'video',
-    'camera',
-    'live-player',
-    'live-pusher',
-    'map',
-    'canvas',
-    'open-data',
-    'web-view',
-    'swiper-item',
-    'movable-area',
-    'movable-view',
-    'functional-page-navigator',
-    'ad',
-    'block',
-    'import',
-    'official-account',
-    'editor'
-]);
-const UNITLESS_PROPERTIES_SET = new Set([
-    'animation-iteration-count',
-    'border-image-outset',
-    'border-image-slice',
-    'border-image-width',
-    'box-flex',
-    'box-flex-group',
-    'box-ordinal-group',
-    'column-count',
-    'columns',
-    'flex',
-    'flex-grow',
-    'flex-positive',
-    'flex-shrink',
-    'flex-negative',
-    'flex-order',
-    'grid-area',
-    'grid-row',
-    'grid-row-end',
-    'grid-row-span',
-    'grid-row-start',
-    'grid-column',
-    'grid-column-end',
-    'grid-column-span',
-    'grid-column-start',
-    'font-weight',
-    'line-clamp',
-    'line-height',
-    'opacity',
-    'order',
-    'orphans',
-    'tab-size',
-    'widows',
-    'z-index',
-    'zoom',
-    // SVG-related properties
-    'fill-opacity',
-    'flood-opacity',
-    'stop-opacity',
-    'stroke-dasharray',
-    'stroke-dashoffset',
-    'stroke-miterlimit',
-    'stroke-opacity',
-    'stroke-width',
-]);
 
 class Events {
     constructor(opts) {
@@ -1037,23 +926,6 @@ function indent(str, size) {
     })
         .join('\n');
 }
-var TTRenderType;
-(function (TTRenderType) {
-    TTRenderType[TTRenderType["V1"] = 1] = "V1";
-    TTRenderType[TTRenderType["V2"] = 2] = "V2";
-})(TTRenderType || (TTRenderType = {}));
-let ttUseV2TTDom;
-function isEnableTTDom() {
-    // 目前仅对于 react 支持 ttdom
-    if ("harmony_cpp" !== 'tt' || "react" !== 'react' || typeof tt === 'undefined') {
-        return false;
-    }
-    if (ttUseV2TTDom !== undefined)
-        return ttUseV2TTDom;
-    const ttMode = tt.getRenderMode ? tt.getRenderMode() : TTRenderType.V1;
-    ttMode === TTRenderType.V2 && tt.__$enableTTDom$__ ? (ttUseV2TTDom = true) : (ttUseV2TTDom = false);
-    return ttUseV2TTDom;
-}
 
 const needPromiseApis = new Set([
     'addPhoneContact',
@@ -1379,7 +1251,7 @@ function equipCommonApis(taro, global, apis = {}) {
     taro.getAppInfo = function () {
         return {
             platform: "harmony" || 'MiniProgram',
-            taroVersion: "4.1.12-alpha.6" || 'unknown',
+            taroVersion: "4.1.12-beta.18" || 'unknown',
             designWidth: taro.config.designWidth
         };
     };
@@ -1427,5 +1299,5 @@ var Shortcuts;
     Shortcuts["Src"] = "src";
 })(Shortcuts || (Shortcuts = {}));
 
-export { COMPILE_MODE_IDENTIFIER_PREFIX, COMPILE_MODE_SUB_RENDER_FN, DEFAULT_COMPONENTS, EMPTY_ARR, EMPTY_OBJ, EventChannel, Events, HOOK_TYPE, PLATFORM_CONFIG_MAP, PLATFORM_TYPE, Shortcuts, TTRenderType, TT_SPECIFIC_COMPONENTS, TaroHook, TaroHooks, UNITLESS_PROPERTIES_SET, animation, box, cacheDataGet, cacheDataHas, cacheDataSet, capitalize, controlledComponent, ensure, focusComponents, getComponentsAlias, getPlatformType, getUniqueKey, hasOwn, hooks, indent, internalComponents, isArray, isBoolean, isBooleanStringLiteral, isEnableTTDom, isFunction, isNull, isNumber, isObject, isObjectStringLiteral, isString, isUndefined, isWebPlatform, mergeInternalComponents, mergeReconciler, nestElements, nonsupport, noop, processApis, queryToJson, setUniqueKeyToRoute, singleQuote, toCamelCase, toDashed, toKebabCase, touchEvents, unbox, voidElements, warn };
+export { COMPILE_MODE_IDENTIFIER_PREFIX, COMPILE_MODE_SUB_RENDER_FN, EMPTY_ARR, EMPTY_OBJ, EventChannel, Events, HOOK_TYPE, PLATFORM_CONFIG_MAP, PLATFORM_TYPE, Shortcuts, TaroHook, TaroHooks, animation, box, cacheDataGet, cacheDataHas, cacheDataSet, capitalize, controlledComponent, ensure, focusComponents, getComponentsAlias, getPlatformType, getUniqueKey, hasOwn, hooks, indent, internalComponents, isArray, isBoolean, isBooleanStringLiteral, isFunction, isNull, isNumber, isObject, isObjectStringLiteral, isString, isUndefined, isWebPlatform, mergeInternalComponents, mergeReconciler, nestElements, nonsupport, noop, processApis, queryToJson, setUniqueKeyToRoute, singleQuote, toCamelCase, toDashed, toKebabCase, touchEvents, unbox, voidElements, warn };
 //# sourceMappingURL=shared.esm.js.map

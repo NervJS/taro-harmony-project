@@ -148,7 +148,6 @@ interface MpInstance {
     data: any;
     exitState?: any;
     selectComponent: (selector: string) => any;
-    __webviewId__?: number;
 }
 interface MiniElementData {
     [Shortcuts.Childnodes]?: MiniData[];
@@ -358,7 +357,6 @@ declare class TaroEvent {
 }
 declare function createEvent(event: MpEvent | string, node?: TaroElement): TaroEvent;
 declare function eventHandler(event: MpEvent): any;
-declare function eventHandlerTTDom(ele: any, listener: (event: MpEvent, element: any) => void, event: MpEvent): void;
 
 declare class TaroElement extends TaroNode {
     ctx?: any;
@@ -594,8 +592,6 @@ declare const taroHistoryProvider: TaroHistory;
 
 declare class SVGElement extends TaroElement {
 }
-
-declare function setInnerHTML(element: TaroNode, html: string): void;
 
 /**
  * A MutationRecord represents an individual DOM mutation.
@@ -918,5 +914,5 @@ declare function convertNumber2PX(value: number): string;
 
 declare function handlePolyfill(): void;
 
-export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams$1 as URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventHandlerTTDom, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, setInnerHTML, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
+export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams$1 as URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
 export type { AddEventListenerOptions, AppInstance, Attributes, DataTree, EventHandler, EventListenerOptions, EventOptions, EventsType, HydratedData, Instance, KeyFrame, MiniData, MiniElementData, MiniTextData, MpEvent, MpInstance, Options$2 as Options, PageConfig, PageInstance, PageLifeCycle, PageProps, ReactAppInstance, ReactPageComponent, ReactPageInstance, ScrollTimelineOption, TFunc, UpdatePayload, UpdatePayloadValue };
