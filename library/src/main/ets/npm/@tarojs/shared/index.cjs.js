@@ -367,6 +367,117 @@ const PLATFORM_CONFIG_MAP = {
         type: exports.PLATFORM_TYPE.QUICK
     },
 };
+const TT_SPECIFIC_COMPONENTS = new Set([
+    'page-container',
+    'slot',
+    'custom-wrapper',
+    'clue-order-form',
+    'aweme-group',
+    'pay-button',
+    'address-area',
+    'consume-card',
+    'aweme-data',
+    'rate-button',
+    'store-area',
+    'inline-payment-panel',
+    'aweme-user-card',
+    'aweme-live-book',
+    'draw-ad',
+    'lynx-view',
+    'flow-ad',
+    'ai-agent-chat',
+    'component'
+]);
+const DEFAULT_COMPONENTS = new Set([
+    'view',
+    'scroll-view',
+    'swiper',
+    'cover-view',
+    'cover-image',
+    'icon',
+    'text',
+    'rich-text',
+    'progress',
+    'button',
+    'checkbox',
+    'form',
+    'input',
+    'label',
+    'picker',
+    'picker-view',
+    'picker-view-column',
+    'radio',
+    'radio-group',
+    'checkbox-group',
+    'slider',
+    'switch',
+    'textarea',
+    'navigator',
+    'audio',
+    'image',
+    'video',
+    'camera',
+    'live-player',
+    'live-pusher',
+    'map',
+    'canvas',
+    'open-data',
+    'web-view',
+    'swiper-item',
+    'movable-area',
+    'movable-view',
+    'functional-page-navigator',
+    'ad',
+    'block',
+    'import',
+    'official-account',
+    'editor'
+]);
+const UNITLESS_PROPERTIES_SET = new Set([
+    'animation-iteration-count',
+    'border-image-outset',
+    'border-image-slice',
+    'border-image-width',
+    'box-flex',
+    'box-flex-group',
+    'box-ordinal-group',
+    'column-count',
+    'columns',
+    'flex',
+    'flex-grow',
+    'flex-positive',
+    'flex-shrink',
+    'flex-negative',
+    'flex-order',
+    'grid-area',
+    'grid-row',
+    'grid-row-end',
+    'grid-row-span',
+    'grid-row-start',
+    'grid-column',
+    'grid-column-end',
+    'grid-column-span',
+    'grid-column-start',
+    'font-weight',
+    'line-clamp',
+    'line-height',
+    'opacity',
+    'order',
+    'orphans',
+    'tab-size',
+    'widows',
+    'z-index',
+    'zoom',
+    // SVG-related properties
+    'fill-opacity',
+    'flood-opacity',
+    'stop-opacity',
+    'stroke-dasharray',
+    'stroke-dashoffset',
+    'stroke-miterlimit',
+    'stroke-opacity',
+    'stroke-width',
+]);
 
 class Events {
     constructor(opts) {
@@ -928,6 +1039,23 @@ function indent(str, size) {
     })
         .join('\n');
 }
+exports.TTRenderType = void 0;
+(function (TTRenderType) {
+    TTRenderType[TTRenderType["V1"] = 1] = "V1";
+    TTRenderType[TTRenderType["V2"] = 2] = "V2";
+})(exports.TTRenderType || (exports.TTRenderType = {}));
+let ttUseV2TTDom;
+function isEnableTTDom() {
+    // 目前仅对于 react 支持 ttdom
+    if ("harmony_cpp" !== 'tt' || "react" !== 'react' || typeof tt === 'undefined') {
+        return false;
+    }
+    if (ttUseV2TTDom !== undefined)
+        return ttUseV2TTDom;
+    const ttMode = tt.getRenderMode ? tt.getRenderMode() : exports.TTRenderType.V1;
+    ttMode === exports.TTRenderType.V2 && tt.__$enableTTDom$__ ? (ttUseV2TTDom = true) : (ttUseV2TTDom = false);
+    return ttUseV2TTDom;
+}
 
 const needPromiseApis = new Set([
     'addPhoneContact',
@@ -1253,7 +1381,7 @@ function equipCommonApis(taro, global, apis = {}) {
     taro.getAppInfo = function () {
         return {
             platform: "harmony" || 'MiniProgram',
-            taroVersion: "4.1.12-beta.17" || 'unknown',
+            taroVersion: "4.1.12-alpha.6" || 'unknown',
             designWidth: taro.config.designWidth
         };
     };
@@ -1303,13 +1431,16 @@ exports.Shortcuts = void 0;
 
 exports.COMPILE_MODE_IDENTIFIER_PREFIX = COMPILE_MODE_IDENTIFIER_PREFIX;
 exports.COMPILE_MODE_SUB_RENDER_FN = COMPILE_MODE_SUB_RENDER_FN;
+exports.DEFAULT_COMPONENTS = DEFAULT_COMPONENTS;
 exports.EMPTY_ARR = EMPTY_ARR;
 exports.EMPTY_OBJ = EMPTY_OBJ;
 exports.EventChannel = EventChannel;
 exports.Events = Events;
 exports.PLATFORM_CONFIG_MAP = PLATFORM_CONFIG_MAP;
+exports.TT_SPECIFIC_COMPONENTS = TT_SPECIFIC_COMPONENTS;
 exports.TaroHook = TaroHook;
 exports.TaroHooks = TaroHooks;
+exports.UNITLESS_PROPERTIES_SET = UNITLESS_PROPERTIES_SET;
 exports.animation = animation;
 exports.box = box;
 exports.cacheDataGet = cacheDataGet;
@@ -1329,6 +1460,7 @@ exports.internalComponents = internalComponents;
 exports.isArray = isArray;
 exports.isBoolean = isBoolean;
 exports.isBooleanStringLiteral = isBooleanStringLiteral;
+exports.isEnableTTDom = isEnableTTDom;
 exports.isFunction = isFunction;
 exports.isNull = isNull;
 exports.isNumber = isNumber;
