@@ -332,27 +332,6 @@ declare module './index' {
     plugins?: Plugins
   }
 
-  /** 子分包独立模板 root 配置项，可以是路径字符串或包含额外选项的对象 */
-  type SubPackageIndieRootConfig = string | {
-    /** 分包根路径（相对于 sourceDir） */
-    path: string
-    /**
-     * 是否禁用递归组件（comp/custom-wrapper/recursive-component）的生成。
-     * 设为 true 时，该 root 下不会生成 comp.*、custom-wrapper.*、recursive-component.js，
-     * base.wxml 最后一层的 container template 也不会引用 <comp>，超出 baseLevel 的节点将被静默截断。
-     * @default false
-     */
-    disableRecursiveComponent?: boolean
-  }
-
-  /** 子分包独立模板配置项 */
-  interface SubPackageIndieConfig {
-    /** 主入口分包根路径（相对于 sourceDir），runtime chunks 将生成到此目录 */
-    mainPackageRoot: SubPackageIndieRootConfig
-    /** 子组件分包根路径列表，只生成独立的模板文件 */
-    subPackageRoots?: SubPackageIndieRootConfig[]
-  }
-
   interface Plugins {
     [key: string]: {
       version: string
@@ -492,23 +471,6 @@ declare module './index' {
      */
     subPackages?: SubPackage[]
     subpackages?: SubPackage[]
-    /** 子分包独立模板配置（用于 newBlended 模式），支持多入口配置
-     * @example
-     * ```js
-     * subPackageIndie: [
-     *   {
-     *     mainPackageRoot: 'pages/order/index',
-     *     subPackageRoots: ['pages/order/list', 'pages/order/detail']
-     *   },
-     *   {
-     *     mainPackageRoot: 'pages/user/index',
-     *     subPackageRoots: ['pages/user/profile']
-     *   }
-     * ]
-     * ```
-     * @since 4.1.x
-     */
-    subPackageIndie?: SubPackageIndieConfig[]
     /** Worker 代码放置的目录
      * 使用 Worker 处理多线程任务时，设置 Worker 代码放置的目录
      * @since 1.9.90
@@ -722,6 +684,11 @@ declare module './index' {
      * @supported alipay
      */
     behavior?: Behavior
+    /**
+     * 用于开启抖音小程序的 tt-dom 渲染模式
+     * @supported tt
+     */
+    enableTTDom?: boolean
   }
 
   interface Config extends PageConfig, AppConfig {
