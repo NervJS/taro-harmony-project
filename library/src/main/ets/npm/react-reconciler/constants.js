@@ -1,6 +1,6 @@
 'use strict';
 
-if ("development" === 'production') {
+if ("production" === 'production') {
   module.exports = require('./cjs/react-reconciler-constants.production.min.js');
 } else {
   module.exports = require('./cjs/react-reconciler-constants.development.js');
