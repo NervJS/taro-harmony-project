@@ -10,7 +10,7 @@
 
 'use strict';
 
-if ("production" !== "production") {
+if ("development" !== "production") {
   module.exports = function $$$reconciler($$$hostConfig) {
     var exports = {};
 'use strict';

@@ -139,7 +139,7 @@ export function handleTaskPool(option: IEtsMethodsOptions) {
         break
     }
   } catch (e) {
-    if (("production" as string) !== 'production') console.error('Error(TaroETS):', e.message, e)
+    if (("development" as string) !== 'production') console.error('Error(TaroETS):', e.message, e)
     if (option.errorHandler) option.errorHandler({
       errCode: e.code,
       errMsg: e.message,
