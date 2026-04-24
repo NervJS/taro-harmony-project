@@ -1511,7 +1511,12 @@ function resolveNearestCtxValue(node, root) {
     return (_a = root.ctx) !== null && _a !== void 0 ? _a : null;
 }
 function bumpNearestCtxEpochForRoot(root) {
-    root === null || root === void 0 ? void 0 : root.bumpNearestCtxEpoch();
+    if (!isNearestCtxEnv() || root == null) {
+        return;
+    }
+    if (typeof root.bumpNearestCtxEpoch === 'function') {
+        root.bumpNearestCtxEpoch();
+    }
 }
 
 const CHILDNODES = "cn" /* Shortcuts.Childnodes */;
