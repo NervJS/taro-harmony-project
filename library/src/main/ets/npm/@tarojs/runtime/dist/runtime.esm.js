@@ -4315,8 +4315,8 @@ function createRecursiveComponentConfig(componentName, forceCustomWrapper = fals
     const lifeCycles = isCustomWrapper || forceCustomWrapper
         ? {
             [ATTACHED]() {
-                var _a, _b;
-                const componentId = ((_a = this.data.i) === null || _a === void 0 ? void 0 : _a.sid) || ((_b = this.props.i) === null || _b === void 0 ? void 0 : _b.sid);
+                var _a, _b, _c, _d;
+                const componentId = ((_b = (_a = this.data) === null || _a === void 0 ? void 0 : _a.i) === null || _b === void 0 ? void 0 : _b.sid) || ((_d = (_c = this.props) === null || _c === void 0 ? void 0 : _c.i) === null || _d === void 0 ? void 0 : _d.sid);
                 if (isString(componentId)) {
                     if (isCustomWrapper) {
                         customWrapperCache.set(componentId, this);
@@ -4329,8 +4329,8 @@ function createRecursiveComponentConfig(componentName, forceCustomWrapper = fals
                 }
             },
             [DETACHED]() {
-                var _a, _b;
-                const componentId = ((_a = this.data.i) === null || _a === void 0 ? void 0 : _a.sid) || ((_b = this.props.i) === null || _b === void 0 ? void 0 : _b.sid);
+                var _a, _b, _c, _d;
+                const componentId = ((_b = (_a = this.data) === null || _a === void 0 ? void 0 : _a.i) === null || _b === void 0 ? void 0 : _b.sid) || ((_d = (_c = this.props) === null || _c === void 0 ? void 0 : _c.i) === null || _d === void 0 ? void 0 : _d.sid);
                 if (isString(componentId)) {
                     if (isCustomWrapper) {
                         customWrapperCache.delete(componentId);
