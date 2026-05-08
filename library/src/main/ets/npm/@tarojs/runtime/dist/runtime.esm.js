@@ -1472,53 +1472,6 @@ class TaroEventTarget {
     }
 }
 
-const nearestCtxCache = new WeakMap();
-function isNearestCtxEnv() {
-    return "harmony_cpp" === 'weapp' || "harmony_cpp" === 'jd';
-}
-function getNearestCtx(node) {
-    if (!isNearestCtxEnv()) {
-        return undefined;
-    }
-    const root = node._root;
-    if (root == null) {
-        return null;
-    }
-    const cached = nearestCtxCache.get(node);
-    if (cached && cached.nearestCtxEpoch === root.nearestCtxEpoch) {
-        return cached.value;
-    }
-    const value = resolveNearestCtxValue(node, root);
-    nearestCtxCache.set(node, { value, nearestCtxEpoch: root.nearestCtxEpoch });
-    return value;
-}
-function resolveNearestCtxValue(node, root) {
-    var _a;
-    if (node.nodeType === 1 /* NodeType.ELEMENT_NODE */) {
-        const ctx = node.ctx;
-        if (ctx != null)
-            return ctx;
-    }
-    let current = node.parentNode;
-    while (current) {
-        if (current.nodeType === 1 /* NodeType.ELEMENT_NODE */) {
-            const ctx = current.ctx;
-            if (ctx != null)
-                return ctx;
-        }
-        current = current.parentNode;
-    }
-    return (_a = root.ctx) !== null && _a !== void 0 ? _a : null;
-}
-function bumpNearestCtxEpochForRoot(root) {
-    if (!isNearestCtxEnv() || root == null) {
-        return;
-    }
-    if (typeof root.bumpNearestCtxEpoch === 'function') {
-        root.bumpNearestCtxEpoch();
-    }
-}
-
 const CHILDNODES = "cn" /* Shortcuts.Childnodes */;
 const nodeId = incrementId();
 class TaroNode extends TaroEventTarget {
@@ -1557,9 +1510,6 @@ class TaroNode extends TaroEventTarget {
     get _root() {
         var _a;
         return ((_a = this.parentNode) === null || _a === void 0 ? void 0 : _a._root) || null;
-    }
-    get _scope() {
-        return getNearestCtx(this);
     }
     findIndex(refChild) {
         const index = this.childNodes.indexOf(refChild);
@@ -1706,9 +1656,6 @@ class TaroNode extends TaroEventTarget {
                 }
             }
         }
-        if (this._root) {
-            bumpNearestCtxEpochForRoot(this._root);
-        }
         MutationObserver$1.record({
             type: "childList" /* MutationRecordType.CHILD_LIST */,
             target: this,
@@ -1784,9 +1731,6 @@ class TaroNode extends TaroEventTarget {
         // Serialization
         if (this._root && doUpdate !== false) {
             this.updateChildNodes();
-        }
-        if (this._root) {
-            bumpNearestCtxEpochForRoot(this._root);
         }
         return child;
     }
@@ -3685,7 +3629,6 @@ class TaroRootElement extends TaroElement {
         this.updateCallbacks = [];
         this.pendingUpdate = false;
         this.ctx = null;
-        this.nearestCtxEpoch = 0;
         this.nodeName = ROOT_STR;
         this.tagName = ROOT_STR.toUpperCase();
     }
@@ -3694,9 +3637,6 @@ class TaroRootElement extends TaroElement {
     }
     get _root() {
         return this;
-    }
-    bumpNearestCtxEpoch() {
-        this.nearestCtxEpoch++;
     }
     scheduleTask(fn) {
         // 这里若使用微任务可略微提前setData的执行时机，但在部分场景下可能会出现连续setData两次，造成更大的性能问题
@@ -4120,7 +4060,6 @@ function createPageConfig(component, pageName, data, pageConfig) {
                     loadResolver();
                     if ("harmony" !== 'web') {
                         pageElement.ctx = this;
-                        bumpNearestCtxEpochForRoot(pageElement);
                         pageElement.performUpdate(true, cb);
                     }
                     else {
@@ -4148,7 +4087,6 @@ function createPageConfig(component, pageName, data, pageConfig) {
                 unmounting = false;
                 instances.delete($taroPath);
                 if (pageElement) {
-                    bumpNearestCtxEpochForRoot(pageElement);
                     pageElement.ctx = null;
                     pageElement = null;
                 }
@@ -4203,7 +4141,6 @@ function createPageConfig(component, pageName, data, pageConfig) {
             return EventChannel.pageChannel;
         };
     }
-    const isSWAN = "harmony_cpp" === 'swan'; // 百度小程序
     LIFECYCLES.forEach((lifecycle) => {
         let isDefer = false;
         let isEvent = false;
@@ -4226,9 +4163,6 @@ function createPageConfig(component, pageName, data, pageConfig) {
         else {
             config[lifecycle] = function () {
                 const exec = () => safeExecute(this.$taroPath, lifecycle, ...arguments);
-                if (isSWAN) {
-                    return exec();
-                }
                 if (isDefer) {
                     hasLoaded.then(exec);
                 }
@@ -4309,36 +4243,30 @@ function createComponentConfig(component, componentName, data) {
     });
     return config;
 }
-function createRecursiveComponentConfig(componentName, forceCustomWrapper = false) {
+function createRecursiveComponentConfig(componentName) {
     const isCustomWrapper = componentName === CUSTOM_WRAPPER;
     const [ATTACHED, DETACHED] = hooks.call('getMiniLifecycleImpl').component;
-    const lifeCycles = isCustomWrapper || forceCustomWrapper
+    const lifeCycles = isCustomWrapper
         ? {
             [ATTACHED]() {
-                var _a, _b, _c, _d;
-                const componentId = ((_b = (_a = this.data) === null || _a === void 0 ? void 0 : _a.i) === null || _b === void 0 ? void 0 : _b.sid) || ((_d = (_c = this.props) === null || _c === void 0 ? void 0 : _c.i) === null || _d === void 0 ? void 0 : _d.sid);
+                var _a, _b;
+                const componentId = ((_a = this.data.i) === null || _a === void 0 ? void 0 : _a.sid) || ((_b = this.props.i) === null || _b === void 0 ? void 0 : _b.sid);
                 if (isString(componentId)) {
-                    if (isCustomWrapper) {
-                        customWrapperCache.set(componentId, this);
-                    }
+                    customWrapperCache.set(componentId, this);
                     const el = env.document.getElementById(componentId);
                     if (el) {
                         el.ctx = this;
-                        bumpNearestCtxEpochForRoot(el._root);
                     }
                 }
             },
             [DETACHED]() {
-                var _a, _b, _c, _d;
-                const componentId = ((_b = (_a = this.data) === null || _a === void 0 ? void 0 : _a.i) === null || _b === void 0 ? void 0 : _b.sid) || ((_d = (_c = this.props) === null || _c === void 0 ? void 0 : _c.i) === null || _d === void 0 ? void 0 : _d.sid);
+                var _a, _b;
+                const componentId = ((_a = this.data.i) === null || _a === void 0 ? void 0 : _a.sid) || ((_b = this.props.i) === null || _b === void 0 ? void 0 : _b.sid);
                 if (isString(componentId)) {
-                    if (isCustomWrapper) {
-                        customWrapperCache.delete(componentId);
-                    }
+                    customWrapperCache.delete(componentId);
                     const el = env.document.getElementById(componentId);
                     if (el) {
                         el.ctx = null;
-                        bumpNearestCtxEpochForRoot(el._root);
                     }
                 }
             }
@@ -4362,7 +4290,7 @@ function createRecursiveComponentConfig(componentName, forceCustomWrapper = fals
             }
         }, options: Object.assign(Object.assign({}, extraOptions), { virtualHost: !isCustomWrapper }), methods: {
             eh: eventHandler
-        } }, lifeCycles), { isCustomWrapper, forceCustomWrapper });
+        } }, lifeCycles), { isCustomWrapper });
 }
 
 const TIMEOUT = 100;
@@ -5174,5 +5102,5 @@ if ("disabled" !== 'disabled' && "harmony" !== 'web') {
     handlePolyfill();
 }
 
-export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver$1 as MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams, VALUE, VIEW, addLeadingSlash, bumpNearestCtxEpochForRoot, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getNearestCtx, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isNearestCtxEnv, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
+export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver$1 as MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
 //# sourceMappingURL=runtime.esm.js.map
