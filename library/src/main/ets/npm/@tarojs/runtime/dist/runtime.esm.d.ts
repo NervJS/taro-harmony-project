@@ -242,9 +242,11 @@ declare class TaroRootElement extends TaroElement {
     private updateCallbacks;
     pendingUpdate: boolean;
     ctx: null | MpInstance;
+    nearestCtxEpoch: number;
     constructor();
     get _path(): string;
     get _root(): TaroRootElement;
+    bumpNearestCtxEpoch(): void;
     scheduleTask(fn: TFunc): void;
     enqueueUpdate(payload: UpdatePayload): void;
     performUpdate(initRender?: boolean, prerender?: TFunc): void;
@@ -268,6 +270,7 @@ declare class TaroNode extends TaroEventTarget {
     private updateChildNodes;
     private updateSingleChild;
     get _root(): TaroRootElement | null;
+    get _scope(): MpInstance | null | undefined;
     protected findIndex(refChild: TaroNode): number;
     get _path(): string;
     get nextSibling(): TaroNode | null;
@@ -590,6 +593,10 @@ declare const taroWindowProvider: TaroWindow;
 declare const taroLocationProvider: TaroLocation;
 declare const taroHistoryProvider: TaroHistory;
 
+declare function isNearestCtxEnv(): boolean;
+declare function getNearestCtx(node: TaroNode): MpInstance | null | undefined;
+declare function bumpNearestCtxEpochForRoot(root: TaroRootElement | null | undefined): void;
+
 declare class SVGElement extends TaroElement {
 }
 
@@ -858,7 +865,7 @@ declare function getOnShowEventKey(path: string): string;
 declare function getOnHideEventKey(path: string): string;
 declare function createPageConfig(component: any, pageName?: string, data?: Record<string, unknown>, pageConfig?: PageConfig): PageInstance;
 declare function createComponentConfig(component: React.ComponentClass, componentName?: string, data?: Record<string, unknown>): any;
-declare function createRecursiveComponentConfig(componentName?: string): any;
+declare function createRecursiveComponentConfig(componentName?: string, forceCustomWrapper?: boolean): any;
 
 /**
  * React also has a fancy function's name for this: `hydrate()`.
@@ -914,5 +921,5 @@ declare function convertNumber2PX(value: number): string;
 
 declare function handlePolyfill(): void;
 
-export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams$1 as URLSearchParams, VALUE, VIEW, addLeadingSlash, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
+export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams$1 as URLSearchParams, VALUE, VIEW, addLeadingSlash, bumpNearestCtxEpochForRoot, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getNearestCtx, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isNearestCtxEnv, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
 export type { AddEventListenerOptions, AppInstance, Attributes, DataTree, EventHandler, EventListenerOptions, EventOptions, EventsType, HydratedData, Instance, KeyFrame, MiniData, MiniElementData, MiniTextData, MpEvent, MpInstance, Options$2 as Options, PageConfig, PageInstance, PageLifeCycle, PageProps, ReactAppInstance, ReactPageComponent, ReactPageInstance, ScrollTimelineOption, TFunc, UpdatePayload, UpdatePayloadValue };
