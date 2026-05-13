@@ -26,12 +26,12 @@ interface ListProps
    * @default 50
    * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid
    */
-  upperThreshold?: number
+  upperThresholdCount?: number
   /** 距底部/右边多远时（单位px），触发 scrolltolower 事件
    * @default 50
    * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid
    */
-  lowerThreshold?: number
+  lowerThresholdCount?: number
 }
 
 declare const List: ComponentType<PropsWithChildren<ListProps>>
