@@ -1185,6 +1185,10 @@ function processApis(taro, global, config = {}) {
                         task === null || task === void 0 ? void 0 : task.onProgressUpdate(cb);
                         return p;
                     };
+                    p.headersReceive = cb => {
+                        task === null || task === void 0 ? void 0 : task.onHeadersReceived(cb);
+                        return p;
+                    };
                     p.abort = cb => {
                         cb === null || cb === void 0 ? void 0 : cb();
                         task === null || task === void 0 ? void 0 : task.abort();
@@ -1251,7 +1255,7 @@ function equipCommonApis(taro, global, apis = {}) {
     taro.getAppInfo = function () {
         return {
             platform: "harmony" || 'MiniProgram',
-            taroVersion: "4.1.12-beta.45" || 'unknown',
+            taroVersion: "4.1.12-beta.46" || 'unknown',
             designWidth: taro.config.designWidth
         };
     };
