@@ -29,6 +29,3 @@ export declare const PLATFORM_CONFIG_MAP: {
         type: PLATFORM_TYPE;
     };
 };
-export declare const TT_SPECIFIC_COMPONENTS: Set<string>;
-export declare const DEFAULT_COMPONENTS: Set<string>;
-export declare const UNITLESS_PROPERTIES_SET: Set<string>;
