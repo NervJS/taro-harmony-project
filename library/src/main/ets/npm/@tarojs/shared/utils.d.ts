@@ -55,8 +55,3 @@ export declare function mergeReconciler(hostConfig: any, hooksForTest?: any): vo
 export declare function nonsupport(api: any): () => void;
 export declare function setUniqueKeyToRoute(key: string, obj: any): void;
 export declare function indent(str: string, size: number): string;
-export declare enum TTRenderType {
-    V1 = 1,
-    V2 = 2
-}
-export declare function isEnableTTDom(): boolean;

@@ -4,11 +4,11 @@ import { StandardProps, CommonEventFunction } from './common'
 interface EditorProps extends StandardProps {
   /** 设置编辑器为只读
    * @default false
-   * @supported weapp, jd, ascf
+   * @supported weapp, jd
    */
   readOnly?: boolean
   /** 提示信息
-   * @supported weapp, jd, ascf
+   * @supported weapp, jd
    */
   placeholder?: string
   /** 点击图片时显示图片大小控件
@@ -26,38 +26,26 @@ interface EditorProps extends StandardProps {
    * @supported weapp, jd
    */
   showImgResize?: boolean
-  /** 编辑器允许的名单内的格式。
-   * @supported ascf
-   */
-  enableFormats?: string[]
-  /** 点击编辑器拉起输入法后，输入法键盘右下角文字类型。
-   * @supported ascf
-   */
-  enterkeyhint?: 'send' | 'search' | 'next' | 'previous' | 'go' | 'done' | 'enter'
-  /** 点击键盘回车键时是否保持键盘不收起。
-   * @supported ascf
-   */
-  confirmHold?: boolean
   /** 编辑器初始化完成时触发
-   * @supported weapp, jd, ascf
+   * @supported weapp, jd
    */
   onReady?: CommonEventFunction
   /** 编辑器聚焦时触发
-   * @supported weapp, jd, ascf
+   * @supported weapp, jd
    */
   onFocus?: CommonEventFunction<EditorProps.editorEventDetail>
   /** 编辑器失去焦点时触发
    * detail = { html, text, delta }
-   * @supported weapp, jd, ascf
+   * @supported weapp, jd
    */
   onBlur?: CommonEventFunction<EditorProps.editorEventDetail>
   /** 编辑器内容改变时触发
    * detail = { html, text, delta }
-   * @supported weapp, jd, ascf
+   * @supported weapp, jd
    */
   onInput?: CommonEventFunction<EditorProps.editorEventDetail>
   /** 通过 Context 方法改变编辑器内样式时触发，返回选区已设置的样式
-   * @supported weapp, jd, ascf
+   * @supported weapp, jd
    */
   onStatusChange?: CommonEventFunction
 }
@@ -80,7 +68,7 @@ declare namespace EditorProps {
  *
  * *编辑器内支持部分 HTML 标签和内联样式，不支持 **class** 和 **id***
  * @classification forms
- * @supported weapp, jd, ascf
+ * @supported weapp, jd
  * @example_react
  * ```tsx
  * class App extends Components {

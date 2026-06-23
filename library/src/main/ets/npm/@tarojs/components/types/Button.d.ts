@@ -4,69 +4,44 @@ import { StandardProps, CommonEventFunction } from './common'
 import { StyleProp, ViewStyle } from '../../../react-native'
 interface ButtonProps extends StandardProps {
   /** 按钮的大小
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid
    * @default default
    */
   size?: keyof ButtonProps.Size
   /** 按钮的样式类型
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid
    * @default default
    */
   type?: keyof ButtonProps.Type
   /** 按钮是否镂空，背景色透明
-   * @supported weapp, alipay, swan, qq, jd, h5, rn, harmony, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, qq, jd, h5, rn, harmony, harmony_hybrid
    * @default false
    */
   plain?: boolean
   /** 是否禁用
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid
    * @default false
    */
   disabled?: boolean
   /** 名称前是否带 loading 图标
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid
    * @default false
    */
   loading?: boolean
   /** 用于 `<form/>` 组件，点击分别会触发 `<form/>` 组件的 submit/reset 事件
-   * @supported weapp, alipay, swan, tt, qq, jd, harmony, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, harmony
    */
   formType?: keyof ButtonProps.FormType
   /** 微信开放能力
-   * @supported weapp, alipay, swan, tt, qq, jd, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd
    */
   openType?: ButtonProps.OpenType
   /** 指定按下去的样式类。当 `hover-class="none"` 时，没有点击态效果
    * @default button-hover
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid
    * @rn 支持 hoverStyle 属性，但框架未支持 hoverClass
    */
   hoverClass?: string
-  /** open-type=launchApp时有效，表示待启动Ability所在的应用Bundle名称。
-   * @default none
-   * @supported ascf
-   */
-  appBundleName?: string
-  /** open-type=launchApp时有效，表示待启动Ability所属的模块名称。
-   * @default none
-   * @supported ascf
-   */
-  appModuleName?: string
-  /** open-type=launchApp时有效，表示待启动Ability名称。
-   * @default none
-   * @supported ascf
-   */
-  appAbilityName?: string
-  /** open-type=launchApp时有效，表示启动Ability时的自定义参数。
-   * @default none
-   * @supported ascf
-   */
-  appParameters?: Object
-  /** open-type=liveActivity时有效，表示子场景ID，当open-type=liveActivity时，该参数必填。
-   * @default none
-   * @supported ascf
-   */
-  activityType?: string
   /** 由于 RN 不支持 hoverClass，故 RN 端的 Button 组件实现了 `hoverStyle`属性，写法和 style 类似，只不过 `hoverStyle` 的样式是指定按下去的样式。
    * @default none
    * @supported rn
@@ -74,17 +49,17 @@ interface ButtonProps extends StandardProps {
   hoverStyle?: StyleProp<ViewStyle>
   /** 指定是否阻止本节点的祖先节点出现点击态
    * @default false
-   * @supported weapp, alipay, swan, tt, qq, jd, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd
    */
   hoverStopPropagation?: boolean
   /** 按住后多久出现点击态，单位毫秒
    * @default 20
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid
    */
   hoverStartTime?: number
   /** 手指松开后点击态保留时间，单位毫秒
    * @default 70
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid
    */
   hoverStayTime?: number
   /** 指定返回用户信息的语言，zh_CN 简体中文，zh_TW 繁体中文，en 英文。
@@ -223,21 +198,9 @@ interface ButtonProps extends StandardProps {
   /** 获取用户手机号回调
    *
    * 生效时机：`open-type="getPhoneNumber"`
-   * @supported weapp, alipay, swan, tt, jd, ascf
+   * @supported weapp, alipay, swan, tt, jd
    */
   onGetPhoneNumber?: CommonEventFunction<ButtonProps.onGetPhoneNumberEventDetail>
-  /** 获取手机号和风险等级的回调
-   *
-   * 生效时机：`open-type="getPhoneNumberAndRiskLevel"`
-   * @supported ascf
-   */
-  onGetPhoneNumberAndRiskLevel?: CommonEventFunction<ButtonProps.onGetPhoneNumberAndRiskLevelEventDetail>
-  /** 获取服务动态授权码的回调
-   *
-   * 生效时机：`open-type="liveActivity"`
-   * @supported ascf
-   */
-  onCreateLiveActivity?: CommonEventFunction<ButtonProps.onCreateLiveActivityEventDetail>
   /**
    * 手机号实时验证回调，`open-type="getRealtimePhoneNumber"` 时有效
    * @supported weapp
@@ -246,19 +209,19 @@ interface ButtonProps extends StandardProps {
   /** 当使用开放能力时，发生错误的回调
    *
    * 生效时机：`open-type="launchApp"`
-   * @supported weapp, alipay, qq, jd, ascf
+   * @supported weapp, alipay, qq, jd
    */
   onError?: CommonEventFunction
   /** 在打开授权设置页后回调
    *
    * 生效时机：`open-type="openSetting"`
-   * @supported weapp, swan, tt, qq, jd, ascf
+   * @supported weapp, swan, tt, qq, jd
    */
   onOpenSetting?: CommonEventFunction<ButtonProps.onOpenSettingEventDetail>
   /** 打开 APP 成功的回调
    *
    * 生效时机：`open-type="launchApp"`
-   * @supported weapp, qq, ascf
+   * @supported weapp, qq
    */
   onLaunchApp?: CommonEventFunction
   /** 获取用户头像回调
@@ -352,23 +315,8 @@ declare namespace ButtonProps {
     | keyof openTypeKeys['alipay']
     | keyof openTypeKeys['qq']
     | keyof openTypeKeys['tt']
-    | keyof openTypeKeys['ascf']
   /** open-type 的合法值 */
   interface openTypeKeys {
-    ascf: {
-      /** 获取用户手机号码，当open-type等于该值时，为保障用户隐私，button组件采用同层渲染ArkUI原生functionalButton组件的方式实现。 */
-      getPhoneNumber,
-      /** 打开授权设置页面。 */
-      openSetting,
-      /** 打开应用，可以通过app-bundle-name，app-module-name，app-ability-name，app-parameters属性打开指定应用。当前只支持打开系统应用，或者在元服务跳转三方应用的场景下只能打开同系列开发者的应用，否则会遭到系统生态管控拦截，提示应用无法打开 */
-      launchApp,
-      /** 触发用户分享，用户点击按钮后触发Page.onShareAppMessage事件，只支持分享首页。 */
-      share,
-      /** 获取服务动态授权码，用于推送服务动态。当open-type等于该值时，必须同时指定activity-type属性。 */
-      liveActivity,
-      /** 获取手机号和风险等级。 */
-      getPhoneNumberAndRiskLevel
-    }
     weapp: {
       /** 打开客服会话，如果用户在会话中点击消息卡片后返回小程序，可以从回调中获得具体信息
        * @see https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/customer-message/customer-message.html
@@ -568,12 +516,6 @@ declare namespace ButtonProps {
      */
     sign: string
   }
-  interface onGetPhoneNumberAndRiskLevelEventDetail {
-    code: string
-  }
-  interface onCreateLiveActivityEventDetail {
-    code: string
-  }
   interface onGetRealTimePhoneNumberEventDetail {
     code: string
   }
@@ -586,7 +528,7 @@ declare namespace ButtonProps {
 }
 /** 按钮
  * @classification forms
- * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid, ascf
+ * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid
  * @example_react
  * ```tsx
  * export default class PageButton extends Component {
