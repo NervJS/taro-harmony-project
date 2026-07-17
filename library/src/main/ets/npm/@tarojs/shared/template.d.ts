@@ -28,8 +28,6 @@ interface ComponentConfig {
     exclude: Set<string>;
     thirdPartyComponents: Map<string, Set<string>>;
     includeAll: boolean;
-    /** 当为 true 时，跳过最后一层 container template 中对 <comp> 的引用，超出 baseLevel 的节点将被静默截断 */
-    skipRecursiveComponent?: boolean;
 }
 export interface IAdapter {
     if: string;
@@ -57,7 +55,6 @@ export declare class BaseTemplate {
     protected exportExpr: string;
     protected isSupportRecursive: boolean;
     protected miniComponents: Components;
-    protected componentConfig: ComponentConfig | undefined;
     protected thirdPartyPatcher: Record<string, Record<string, string>>;
     protected modifyCompProps?: (compName: string, target: Record<string, string>) => Record<string, string>;
     protected modifyLoopBody?: (child: string, nodeName: string) => string;
@@ -121,6 +118,7 @@ export declare class RecursiveTemplate extends BaseTemplate {
 export declare class UnRecursiveTemplate extends BaseTemplate {
     isSupportRecursive: boolean;
     protected _baseLevel: number;
+    private componentConfig;
     buildTemplate: (componentConfig: ComponentConfig) => string;
     protected buildFloor(level: number, components: string[], restart?: boolean): string;
     protected buildOptimizeFloor(level: number, components: string[], restart?: boolean): string;

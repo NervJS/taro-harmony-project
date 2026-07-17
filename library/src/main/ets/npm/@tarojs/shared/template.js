@@ -739,6 +739,11 @@ function indent(str, size) {
     })
         .join('\n');
 }
+var TTRenderType;
+(function (TTRenderType) {
+    TTRenderType[TTRenderType["V1"] = 1] = "V1";
+    TTRenderType[TTRenderType["V2"] = 2] = "V2";
+})(TTRenderType || (TTRenderType = {}));
 
 /**
  * 这里我们需要关心的小程序种类有两类：
@@ -1191,16 +1196,11 @@ ${this.buildXsImportTemplate()}<template is="{{'tmpl_0_' + item.${"nn" /* Shortc
     }
     // 最后一层的 comp 需要引用 container 进行重新的模版循环，其他情况不需要 container
     buildContainerTemplate(level) {
-        var _a;
-        const skipRecursive = (_a = this.componentConfig) === null || _a === void 0 ? void 0 : _a.skipRecursiveComponent;
-        const compTag = skipRecursive
-            ? '<!-- nodes beyond baseLevel are truncated -->'
-            : (!this.isSupportRecursive && this.isUseXS ? '<comp i="{{i}}" l="{{l}}" />' : '<comp i="{{i}}" />');
         const tmpl = `<block ${this.Adapter.if}="{{i.nn === '${this.componentsAlias['#text']._num}'}}">
     <template is="tmpl_0_${this.componentsAlias['#text']._num}" data="{{${this.dataKeymap('i:i')}}}" />
   </block>
   <block ${this.Adapter.else}>
-    ${compTag}
+    ${!this.isSupportRecursive && this.isUseXS ? '<comp i="{{i}}" l="{{l}}" />' : '<comp i="{{i}}" />'}
   </block>`;
         return `
 <template name="tmpl_${level}_${"container" /* Shortcuts.Container */}">
