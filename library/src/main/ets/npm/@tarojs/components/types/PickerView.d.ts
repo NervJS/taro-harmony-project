@@ -3,16 +3,16 @@ import { ComponentType } from '../../../react'
 import { StandardProps, CommonEventFunction } from './common'
 interface PickerViewProps extends StandardProps {
   /** 数组中的数字依次表示 picker-view 内的 picker-view-column 选择的第几项（下标从 0 开始），数字大于 picker-view-column 可选项长度时，选择最后一项。
-   * @supported weapp, alipay, swan, tt, qq, jd, rn, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, rn
    */
   value?: number[]
   /** 设置 React 非受控状态下的初始取值
-   * @supported weapp, alipay, swan, tt, qq, jd, rn, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, rn
    * @unique
    */
   defaultValue?: number[]
   /** 设置选择器中间选中框的样式
-   * @supported weapp, alipay, swan, tt, qq, jd, rn, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, rn
    */
   indicatorStyle?: string
   /** 设置选择器中间选中框的类名
@@ -41,15 +41,15 @@ interface PickerViewProps extends StandardProps {
    */
   ariaLabel?: string
   /** 当滚动选择，value 改变时触发 change 事件，event.detail = {value: value}；value为数组，表示 picker-view 内的 picker-view-column 当前选择的是第几项（下标从 0 开始）
-   * @supported weapp, alipay, swan, tt, qq, jd, rn, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, rn
    */
   onChange?: CommonEventFunction<PickerViewProps.onChangeEventDetail>
   /** 当滚动选择开始时候触发事件
-   * @supported weapp, alipay, tt, qq, ascf
+   * @supported weapp, alipay, tt, qq
    */
   onPickStart?: CommonEventFunction
   /** 当滚动选择结束时候触发事件
-   * @supported weapp, alipay, tt, qq, ascf
+   * @supported weapp, alipay, tt, qq
    */
   onPickEnd?: CommonEventFunction
 }
@@ -61,7 +61,7 @@ declare namespace PickerViewProps {
 /** 嵌入页面的滚动选择器
  * 其中只可放置 picker-view-column 组件，其它节点不会显示
  * @classification forms
- * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid, ascf
+ * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony_hybrid
  * @example_react
  * ```tsx
  * export default class Picks extends Component {

@@ -54,7 +54,7 @@ const hasOwn = (val, key) => hasOwnProperty.call(val, key);
  */
 function ensure(condition, msg) {
     if (!condition) {
-        if ("production" !== 'production') {
+        if ("development" !== 'production') {
             const reportIssue = '\n如有疑问，请提交 issue 至：https://github.com/nervjs/taro/issues';
             throw new Error(msg + reportIssue);
         }
@@ -64,7 +64,7 @@ function ensure(condition, msg) {
     }
 }
 function warn(condition, msg) {
-    if ("production" !== 'production') {
+    if ("development" !== 'production') {
         if (condition) {
             console.warn(`[taro warn] ${msg}`);
         }
@@ -216,23 +216,6 @@ function indent(str, size) {
     })
         .join('\n');
 }
-var TTRenderType;
-(function (TTRenderType) {
-    TTRenderType[TTRenderType["V1"] = 1] = "V1";
-    TTRenderType[TTRenderType["V2"] = 2] = "V2";
-})(TTRenderType || (TTRenderType = {}));
-let ttUseV2TTDom;
-function isEnableTTDom() {
-    // 目前仅对于 react 支持 ttdom
-    if ("harmony_cpp" !== 'tt' || "react" !== 'react' || typeof tt === 'undefined') {
-        return false;
-    }
-    if (ttUseV2TTDom !== undefined)
-        return ttUseV2TTDom;
-    const ttMode = tt.getRenderMode ? tt.getRenderMode() : TTRenderType.V1;
-    ttMode === TTRenderType.V2 && tt.__$enableTTDom$__ ? (ttUseV2TTDom = true) : (ttUseV2TTDom = false);
-    return ttUseV2TTDom;
-}
 
-export { EMPTY_ARR, EMPTY_OBJ, TTRenderType, box, cacheDataGet, cacheDataHas, cacheDataSet, capitalize, ensure, getComponentsAlias, getPlatformType, getUniqueKey, hasOwn, indent, isEnableTTDom, mergeInternalComponents, mergeReconciler, nonsupport, noop, queryToJson, setUniqueKeyToRoute, toCamelCase, toDashed, toKebabCase, unbox, warn };
+export { EMPTY_ARR, EMPTY_OBJ, box, cacheDataGet, cacheDataHas, cacheDataSet, capitalize, ensure, getComponentsAlias, getPlatformType, getUniqueKey, hasOwn, indent, mergeInternalComponents, mergeReconciler, nonsupport, noop, queryToJson, setUniqueKeyToRoute, toCamelCase, toDashed, toKebabCase, unbox, warn };
 //# sourceMappingURL=utils.js.map

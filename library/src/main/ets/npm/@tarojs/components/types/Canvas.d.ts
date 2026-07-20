@@ -3,16 +3,16 @@ import { ComponentType } from '../../../react'
 import { StandardProps, CommonEventFunction, CanvasTouchEventFunction, CanvasTouchEvent } from './common'
 interface CanvasProps extends StandardProps<any, CanvasTouchEvent> {
   /** 指定 canvas 类型，支持 2d 和 webgl
-   * @supported weapp, alipay, tt, ascf
+   * @supported weapp, alipay, tt
    */
   type?: string
   /** canvas 组件的唯一标识符，若指定了 type 则无需再指定该属性
-   * @supported weapp, swan, tt, qq, jd, h5, harmony_hybrid, ascf
+   * @supported weapp, swan, tt, qq, jd, h5, harmony_hybrid
    */
   canvasId?: string
   /** 当在 canvas 中移动时且有绑定手势事件时，禁止屏幕滚动以及下拉刷新
    * @default false
-   * @supported weapp, alipay, swan, qq, jd, ascf
+   * @supported weapp, alipay, swan, qq, jd
    */
   disableScroll?: boolean
   /** 组件唯一标识符。
@@ -33,27 +33,27 @@ interface CanvasProps extends StandardProps<any, CanvasTouchEvent> {
    */
   nativeProps?: Record<string, unknown>
   /** 手指触摸动作开始
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, harmony_hybrid
    */
   onTouchStart?: CanvasTouchEventFunction
   /** 手指触摸后移动
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, harmony_hybrid
    */
   onTouchMove?: CanvasTouchEventFunction
   /** 手指触摸动作结束
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, harmony_hybrid
    */
   onTouchEnd?: CanvasTouchEventFunction
   /** 手指触摸动作被打断，如来电提醒，弹窗
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, harmony_hybrid
    */
   onTouchCancel?: CanvasTouchEventFunction
   /** 手指长按 500ms 之后触发，触发了长按事件后进行移动不会触发屏幕的滚动
-   * @supported weapp, alipay, swan, qq, jd, h5, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, qq, jd, h5, harmony_hybrid
    */
   onLongTap?: CommonEventFunction
   /** 当发生错误时触发 error 事件，detail = {errMsg: 'something wrong'}
-   * @supported weapp, swan, qq, jd, ascf
+   * @supported weapp, swan, qq, jd
    */
   onError?: CommonEventFunction<CanvasProps.onErrorEventDetail>
   /** 点击。
@@ -74,7 +74,7 @@ declare namespace CanvasProps {
  *
  * `<Canvas />` 组件的 RN 版本尚未实现。
  * @classification canvas
- * @supported weapp, alipay, swan, tt, qq, jd, h5, harmony_hybrid, ascf
+ * @supported weapp, alipay, swan, tt, qq, jd, h5, harmony_hybrid
  * @example_react
  * ```tsx
  * class App extends Components {

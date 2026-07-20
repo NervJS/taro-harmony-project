@@ -3,22 +3,22 @@ import { ComponentType } from '../../../react'
 import { StandardProps, CommonEventFunction, FormItemProps } from './common'
 interface RadioProps extends StandardProps {
   /** `<Radio/>` 标识。当该`<Radio/>` 选中时，`<RadioGroup/>`的 change 事件会携带`<Radio/>`的 value
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid
    */
   value?: string
   /** 当前是否选中
    * @default false
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid
    */
   checked?: boolean
   /** 是否禁用
    * @default false
-   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, h5, rn, harmony, harmony_hybrid
    */
   disabled?: boolean
   /** Radio 的颜色，同 css 的 color
    * @default "#09BB07"
-   * @supported weapp, alipay, swan, tt, qq, jd, rn, harmony, ascf
+   * @supported weapp, alipay, swan, tt, qq, jd, rn, harmony
    */
   color?: string
   /**
@@ -43,7 +43,7 @@ interface RadioProps extends StandardProps {
 }
 /** 单选项目
  * @classification forms
- * @supported weapp, alipay, swan, tt, qq, h5, rn, harmony, harmony_hybrid, ascf
+ * @supported weapp, alipay, swan, tt, qq, h5, rn, harmony, harmony_hybrid
  * @example_react
  * ```tsx
  * export default class PageRadio extends Component {
