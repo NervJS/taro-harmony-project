@@ -739,6 +739,11 @@ function indent(str, size) {
     })
         .join('\n');
 }
+var TTRenderType;
+(function (TTRenderType) {
+    TTRenderType[TTRenderType["V1"] = 1] = "V1";
+    TTRenderType[TTRenderType["V2"] = 2] = "V2";
+})(TTRenderType || (TTRenderType = {}));
 
 /**
  * 这里我们需要关心的小程序种类有两类：
@@ -1163,7 +1168,7 @@ ${this.buildXsImportTemplate()}<template is="{{'tmpl_0_' + item.${"nn" /* Shortc
             if (compName === 'custom-wrapper') {
                 template += `
 <template name="tmpl_${level}_${compName}">
-  <${compName} i="{{i}}" ${!isSupportRecursive && isUseXS ? 'l="{{l}}"' : ''} id="{{i.uid||i.sid}}" data-sid="{{i.sid}}">
+  <${compName} i="{{i}}" ${!isSupportRecursive && isUseXS ? 'l="{{l}}"' : ''} id="{{i.uid||i.sid}}" data-sid="{{i.sid}}" class="{{i.cl}}" style="{{i.st}}">
   </${compName}>
 </template>
   `;
