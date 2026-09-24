@@ -3,7 +3,7 @@ import Taro from '../../index'
 
 declare module '../../index' {
   namespace request {
-    interface Option<T = any, U extends string | TaroGeneral.IAnyObject | ArrayBuffer = any | any> {
+    interface Option<T = any, U = any> {
       /** 开发者服务器接口地址 */
       url: string
       /** 请求的参数 */
@@ -151,8 +151,7 @@ declare module '../../index' {
       storeCheck?(): boolean
     }
 
-    interface SuccessCallbackResult<T extends string | TaroGeneral.IAnyObject | ArrayBuffer = any | any>
-      extends TaroGeneral.CallbackResult {
+    interface SuccessCallbackResult<T = any> extends TaroGeneral.CallbackResult {
       /** 开发者服务器返回的数据 */
       data: T
       /** 开发者服务器返回的 HTTP Response Header */
@@ -378,6 +377,11 @@ declare module '../../index' {
         data: ArrayBuffer
       }
     }
+  }
+
+  /** @ignore */
+  interface RequestParams<T = any> extends request.Option<T, any> {
+    [propName: string]: any
   }
 
   /** @ignore */
