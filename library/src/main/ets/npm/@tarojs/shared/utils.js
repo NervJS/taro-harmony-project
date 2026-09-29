@@ -54,7 +54,7 @@ const hasOwn = (val, key) => hasOwnProperty.call(val, key);
  */
 function ensure(condition, msg) {
     if (!condition) {
-        if ("development" !== 'production') {
+        if ("production" !== 'production') {
             const reportIssue = '\n如有疑问，请提交 issue 至：https://github.com/nervjs/taro/issues';
             throw new Error(msg + reportIssue);
         }
@@ -64,7 +64,7 @@ function ensure(condition, msg) {
     }
 }
 function warn(condition, msg) {
-    if ("development" !== 'production') {
+    if ("production" !== 'production') {
         if (condition) {
             console.warn(`[taro warn] ${msg}`);
         }
