@@ -230,16 +230,9 @@ function debounce(fn, ms = 250, scope) {
 
 const eventCenter = hooks.call('getEventCenter', Events);
 
-// `typeof` guards are required: H5 config loading evaluates this module in Node
-// while `TARO_PLATFORM === 'web'`, and a bare `window`/`document` access throws.
-// See https://github.com/NervJS/taro/issues/19031
 const env = {
-    window: "harmony" === 'web'
-        ? (typeof window !== 'undefined' ? window : EMPTY_OBJ)
-        : EMPTY_OBJ,
-    document: "harmony" === 'web'
-        ? (typeof document !== 'undefined' ? document : EMPTY_OBJ)
-        : EMPTY_OBJ
+    window: "harmony" === 'web' ? window : EMPTY_OBJ,
+    document: "harmony" === 'web' ? document : EMPTY_OBJ
 };
 
 // Note: 小程序端 vite 打包成 commonjs，const getComputedStyle = xxx 会报错，所以把 GetComputedStyle 改为 taroGetComputedStyleProvider
@@ -999,19 +992,12 @@ let now;
 let lastTime = 0;
 // https://gist.github.com/paulirish/1579671
 // https://gist.github.com/jalbam/5fe05443270fa6d8136238ec72accbc0
-// Same Node config-load hazard as env.ts: these identifiers throw when absent.
-// Use native implementations only when BOTH exist to ensure raf/caf use matching APIs.
-const _hasNativeRaf = "harmony" === 'web' &&
-    typeof requestAnimationFrame !== 'undefined' &&
-    typeof cancelAnimationFrame !== 'undefined';
-const _raf = _hasNativeRaf
-    ? requestAnimationFrame
-    : function (callback) {
-        const _now = now();
-        const nextTime = Math.max(lastTime + 16, _now); // First time will execute it immediately but barely noticeable and performance is gained.
-        return setTimeout(function () { callback(lastTime = nextTime); }, nextTime - _now);
-    };
-const _caf = _hasNativeRaf
+const _raf = "harmony" === 'web' ? requestAnimationFrame : function (callback) {
+    const _now = now();
+    const nextTime = Math.max(lastTime + 16, _now); // First time will execute it immediately but barely noticeable and performance is gained.
+    return setTimeout(function () { callback(lastTime = nextTime); }, nextTime - _now);
+};
+const _caf = "harmony" === 'web'
     ? cancelAnimationFrame
     : function (seed) {
         // fix https://github.com/NervJS/taro/issues/7749
@@ -1472,9 +1458,6 @@ class TaroEventTarget {
                 return true;
         });
         "development" !== 'production' && warn(index === -1, `事件: '${type}' 没有注册在 DOM 中，因此不会被移除。`);
-        if (index === -1) {
-            return;
-        }
         handlers.splice(index, 1);
     }
     isAnyEventBinded() {
@@ -3483,9 +3466,7 @@ class TaroEvent {
             const currentEle = env.document.getElementById(((_b = target.dataset) === null || _b === void 0 ? void 0 : _b.sid) || target.id || null);
             // Note：优先判断冒泡场景alipay的targetDataset的sid, 不然冒泡场景target属性吐出不对，其余拿取当前绑定id
             const element = env.document.getElementById(((_c = target.targetDataset) === null || _c === void 0 ? void 0 : _c.sid) || ((_d = target.dataset) === null || _d === void 0 ? void 0 : _d.sid) || target.id || null);
-            // Keep logical data authoritative, falling back per source when an index is unavailable.
-            // Preserve Alipay's merge order: the actual target overrides the wrapper's dataset.
-            target.dataset = Object.assign(Object.assign({}, (currentEle !== null ? currentEle.dataset : target.dataset || EMPTY_OBJ)), (element !== null ? element.dataset : target.targetDataset || EMPTY_OBJ));
+            target.dataset = Object.assign(Object.assign({}, (currentEle !== null ? currentEle.dataset : EMPTY_OBJ)), (element !== null ? element.dataset : EMPTY_OBJ));
             for (const key in (_e = this.mpEvent) === null || _e === void 0 ? void 0 : _e.detail) {
                 target[key] = this.mpEvent.detail[key];
             }
@@ -3504,13 +3485,11 @@ class TaroEvent {
             const currentTarget = Object.create(((_a = this.mpEvent) === null || _a === void 0 ? void 0 : _a.currentTarget) || null);
             const element = doc.getElementById(((_b = currentTarget.dataset) === null || _b === void 0 ? void 0 : _b.sid) || currentTarget.id || null);
             const targetElement = doc.getElementById(((_e = (_d = (_c = this.mpEvent) === null || _c === void 0 ? void 0 : _c.target) === null || _d === void 0 ? void 0 : _d.dataset) === null || _e === void 0 ? void 0 : _e.sid) || ((_g = (_f = this.mpEvent) === null || _f === void 0 ? void 0 : _f.target) === null || _g === void 0 ? void 0 : _g.id) || null);
-            // Missing indexes do not imply identical targets. Without a logical match,
-            // only the same native object (or absent targets on a manual event) shares the wrapper.
-            if (element !== null ? element === targetElement : !this.mpEvent || this.mpEvent.currentTarget === this.mpEvent.target) {
+            if (element === null || (element && element === targetElement)) {
                 this.cacheCurrentTarget = this.target;
                 return this.target;
             }
-            currentTarget.dataset = element !== null ? element.dataset : currentTarget.dataset || EMPTY_OBJ;
+            currentTarget.dataset = element.dataset;
             for (const key in (_h = this.mpEvent) === null || _h === void 0 ? void 0 : _h.detail) {
                 currentTarget[key] = this.mpEvent.detail[key];
             }
