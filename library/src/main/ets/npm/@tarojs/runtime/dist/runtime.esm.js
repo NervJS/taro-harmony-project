@@ -3453,7 +3453,11 @@ function cloneNode(isDeep = false) {
         }
     }
     if (isDeep) {
-        newNode.childNodes = this.childNodes.map(node => node.cloneNode(true));
+        newNode.childNodes = this.childNodes.map(node => {
+            const child = node.cloneNode(true);
+            child.parentNode = newNode;
+            return child;
+        });
     }
     if (this.nodeType === 1 /* NodeType.ELEMENT_NODE */) {
         copyDatasetAttributeOrder(this, newNode);
