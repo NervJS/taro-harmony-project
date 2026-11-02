@@ -1805,6 +1805,10 @@ class TaroNode extends TaroEventTarget {
             return;
         if (newChild === oldChild)
             return oldChild;
+        // An empty fragment inserts nothing, so removal must schedule the update.
+        if (newChild.nodeName === DOCUMENT_FRAGMENT && !newChild.hasChildNodes()) {
+            return this.removeChild(oldChild);
+        }
         // Insert the newChild
         this.insertBefore(newChild, oldChild, true);
         // Destroy the oldChild
