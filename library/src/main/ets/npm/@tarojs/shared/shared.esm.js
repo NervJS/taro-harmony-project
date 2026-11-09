@@ -765,6 +765,7 @@ class TaroHooks extends Events {
     }
 }
 const hooks = new TaroHooks({
+    getNativeScope: TaroHook(HOOK_TYPE.SINGLE, scope => scope),
     getMiniLifecycle: TaroHook(HOOK_TYPE.SINGLE, defaultConfig => defaultConfig),
     getMiniLifecycleImpl: TaroHook(HOOK_TYPE.SINGLE, function () {
         return this.call('getMiniLifecycle', defaultMiniLifecycle);
@@ -1241,6 +1242,25 @@ function getNormalRequest(global) {
         return p;
     };
 }
+// Only native selector/id scope parameters with verified weapp contracts.
+const nativeScopeApis = new Set([
+    'createCanvasContext', 'canvasToTempFilePath', 'canvasPutImageData', 'canvasGetImageData',
+    'createAudioContext', 'createVideoContext', 'createMapContext', 'createLivePlayerContext'
+]);
+const scopedQueries = new WeakSet();
+function resolveNativeScopeArgs(api, args) {
+    if ("harmony_cpp" !== 'weapp')
+        return args;
+    const index = api === 'createIntersectionObserver' ? 0 : nativeScopeApis.has(api) ? 1 : -1;
+    if (index < 0 || args.length <= index)
+        return args;
+    const scope = hooks.call('getNativeScope', args[index]);
+    if (scope === args[index])
+        return args;
+    const resolved = args.slice();
+    resolved[index] = scope;
+    return resolved;
+}
 function processApis(taro, global, config = {}) {
     const patchNeedPromiseApis = config.needPromiseApis || [];
     const _needPromiseApis = new Set([...patchNeedPromiseApis, ...needPromiseApis]);
@@ -1270,7 +1290,7 @@ function processApis(taro, global, config = {}) {
                 // 第一个参数 options 为字符串，单独处理
                 if (typeof options === 'string') {
                     if (args.length) {
-                        return global[key](options, ...args);
+                        return global[key](...resolveNativeScopeArgs(key, [options, ...args]));
                     }
                     return global[key](options);
                 }
@@ -1310,12 +1330,17 @@ function processApis(taro, global, config = {}) {
                         var _a;
                         (_a = options.complete) === null || _a === void 0 ? void 0 : _a.call(options, res);
                     };
-                    if (args.length) {
-                        task = global[key](obj, ...args);
+                    let nativeArgs;
+                    try {
+                        nativeArgs = resolveNativeScopeArgs(key, [obj, ...args]);
                     }
-                    else {
-                        task = global[key](obj);
+                    catch (error) {
+                        const result = { errMsg: `${key}:fail ${error instanceof Error ? error.message : error}` };
+                        obj.fail(result);
+                        obj.complete(result);
+                        return;
                     }
+                    task = global[key](...nativeArgs);
                 });
                 // 给 promise 对象挂载属性
                 if (['uploadFile', 'downloadFile'].includes(key)) {
@@ -1350,6 +1375,7 @@ function processApis(taro, global, config = {}) {
             }
             if (isFunction(global[key])) {
                 taro[key] = (...args) => {
+                    args = resolveNativeScopeArgs(key, args);
                     if (config.handleSyncApis) {
                         return config.handleSyncApis(key, global, args);
                     }
@@ -1394,7 +1420,7 @@ function equipCommonApis(taro, global, apis = {}) {
     taro.getAppInfo = function () {
         return {
             platform: "harmony" || 'MiniProgram',
-            taroVersion: "4.3.3-alpha.0" || 'unknown',
+            taroVersion: "4.3.3-beta.0" || 'unknown',
             designWidth: taro.config.designWidth
         };
     };
@@ -1418,7 +1444,16 @@ function equipTaskMethodsIntoPromise(task, promise) {
 }
 function delayRef(taro, global, name, method) {
     return function (...args) {
-        const res = global[name](...args);
+        const res = global[name](...resolveNativeScopeArgs(name, args));
+        if ("harmony_cpp" === 'weapp' && name === 'createSelectorQuery' && isFunction(res.in) && !scopedQueries.has(res)) {
+            const rawIn = res.in;
+            res.in = function (...scopeArgs) {
+                if (scopeArgs.length)
+                    scopeArgs[0] = hooks.call('getNativeScope', scopeArgs[0]);
+                return rawIn.apply(this, scopeArgs);
+            };
+            scopedQueries.add(res);
+        }
         const raw = res[method].bind(res);
         res[method] = function (...methodArgs) {
             taro.nextTick(() => raw(...methodArgs));

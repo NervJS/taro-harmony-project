@@ -1039,14 +1039,16 @@ let lastTime = 0;
 const _hasNativeRaf = "harmony" === 'web' &&
     typeof requestAnimationFrame !== 'undefined' &&
     typeof cancelAnimationFrame !== 'undefined';
-const _raf = _hasNativeRaf
+// Keep this check inline so Webpack prunes native globals before ProvidePlugin
+// can inject an import of this module's own RAF exports on non-web platforms.
+const _raf = "harmony" === 'web' && _hasNativeRaf
     ? requestAnimationFrame
     : function (callback) {
         const _now = now();
         const nextTime = Math.max(lastTime + 16, _now); // First time will execute it immediately but barely noticeable and performance is gained.
         return setTimeout(function () { callback(lastTime = nextTime); }, nextTime - _now);
     };
-const _caf = _hasNativeRaf
+const _caf = "harmony" === 'web' && _hasNativeRaf
     ? cancelAnimationFrame
     : function (seed) {
         // fix https://github.com/NervJS/taro/issues/7749
@@ -1555,6 +1557,8 @@ class TaroEventTarget {
     }
 }
 
+// Tokens identify roots without keeping a moved node's previous root alive.
+const nearestCtxRootTokens = new WeakMap();
 const nearestCtxCache = new WeakMap();
 function isNearestCtxEnv() {
     return "harmony_cpp" === 'weapp' || "harmony_cpp" === 'jd';
@@ -1567,12 +1571,17 @@ function getNearestCtx(node) {
     if (root == null) {
         return null;
     }
+    let rootToken = nearestCtxRootTokens.get(root);
+    if (rootToken === undefined) {
+        rootToken = {};
+        nearestCtxRootTokens.set(root, rootToken);
+    }
     const cached = nearestCtxCache.get(node);
-    if (cached && cached.nearestCtxEpoch === root.nearestCtxEpoch) {
+    if (cached && cached.rootToken === rootToken && cached.nearestCtxEpoch === root.nearestCtxEpoch) {
         return cached.value;
     }
     const value = resolveNearestCtxValue(node, root);
-    nearestCtxCache.set(node, { value, nearestCtxEpoch: root.nearestCtxEpoch });
+    nearestCtxCache.set(node, { value, rootToken, nearestCtxEpoch: root.nearestCtxEpoch });
     return value;
 }
 function resolveNearestCtxValue(node, root) {
@@ -3519,6 +3528,25 @@ function contains(node) {
     return false;
 }
 
+hooks.tap('getNativeScope', scope => {
+    if ("harmony_cpp" !== 'weapp' || !(scope instanceof TaroNode))
+        return scope;
+    // A not-yet-attached native wrapper must not fall back to its page scope.
+    let current = scope;
+    while (current) {
+        if (current.ctx != null)
+            break;
+        if (current.nodeName === CUSTOM_WRAPPER) {
+            throw new Error('Native scope is not ready: the custom-wrapper is not attached.');
+        }
+        current = current.parentNode;
+    }
+    const ctx = scope._scope;
+    if (ctx == null) {
+        throw new Error('Native scope is unavailable: the Taro node must be mounted with a native context.');
+    }
+    return ctx;
+});
 if ("harmony" !== PLATFORM_TYPE.WEB && "harmony" !== PLATFORM_TYPE.HARMONY) {
     if (ENABLE_INNER_HTML) {
         TaroNode.extend('innerHTML', {
@@ -4572,6 +4600,7 @@ function createComponentConfig(component, componentName, data) {
                 safeExecute(path, ON_LOAD);
                 if ("harmony" !== 'web') {
                     componentElement.ctx = this;
+                    bumpNearestCtxEpochForRoot(componentElement);
                     if ("harmony_cpp" !== 'tt' || !isEnableTTDom()) {
                         componentElement.performUpdate(true);
                     }
@@ -4584,6 +4613,7 @@ function createComponentConfig(component, componentName, data) {
                 instances.delete(path);
                 if (componentElement) {
                     componentElement.ctx = null;
+                    bumpNearestCtxEpochForRoot(componentElement);
                 }
             });
         },
