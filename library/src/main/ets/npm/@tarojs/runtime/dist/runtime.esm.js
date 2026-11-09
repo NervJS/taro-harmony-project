@@ -174,7 +174,7 @@ let MutationObserver$1 = class MutationObserver {
             this.core = new MutationObserverImpl(callback);
         }
         else {
-            if ("production" !== 'production') {
+            if ("development" !== 'production') {
                 console.warn('[Taro Warning] 若要使用 MutationObserver，请在 Taro 编译配置中设置 \'mini.runtime.enableMutationObserver: true\'');
             }
             this.core = {
@@ -389,7 +389,42 @@ const Current = {
     router: null,
     page: null
 };
-const getCurrentInstance = () => Current;
+const getCurrentInstance = () => {
+    const currentPage = getCurrentPageSafe();
+    // _isFramesetEnabled为鸿蒙ASCF小程序分栏模式开启的标识，_isFramesetEnabled为true时，适配getCurrentInstance接口支持分栏模式
+    if ((currentPage === null || currentPage === void 0 ? void 0 : currentPage._isFramesetEnabled) !== true) {
+        return Current;
+    }
+    return getFramesetInstance(currentPage);
+};
+/**
+ * getCurrentPage为鸿蒙ASCF小程序支持的全局接口，支持分栏模式下返回对应分栏的page
+ */
+function getCurrentPageSafe() {
+    try {
+        return typeof getCurrentPage === 'function' ? getCurrentPage() : undefined;
+    }
+    catch (_a) {
+        return undefined;
+    }
+}
+/**
+ * 取分栏页内快照（_taroInstance），在onLoad首次访问时基于 Current 创建并缓存
+ * app/router/page 固化于创建时刻，隔离子页面切换污染
+ * preloadData 全局共享，通过 getter/setter 代理回 Current.preloadData
+ */
+function getFramesetInstance(page) {
+    if (!page._taroInstance) {
+        page._taroInstance = {
+            app: Current.app,
+            router: Current.router,
+            page: Current.page,
+            get preloadData() { return Current.preloadData; },
+            set preloadData(v) { Current.preloadData = v; }
+        };
+    }
+    return page._taroInstance;
+}
 
 var _dict, _a;
 const findReg = /[!'()~]|%20|%00/g;
@@ -444,7 +479,7 @@ const URLSearchParams = "harmony" === 'web' ? env.window.URLSearchParams : (_a =
                         }
                     }
                     catch (err) {
-                        if ("production" !== 'production') {
+                        if ("development" !== 'production') {
                             console.warn(`[Taro warn] URL 参数 ${value} decode 异常`);
                         }
                     }
@@ -1038,7 +1073,7 @@ class TaroWindow extends Events {
                     this[property] = globalThis[property];
                 }
                 catch (e) {
-                    if ("production" !== 'production') {
+                    if ("development" !== 'production') {
                         console.warn(`[Taro warn] window.${String(property)} 在赋值到 window 时报错`);
                     }
                 }
@@ -1112,7 +1147,7 @@ const getHomePage = (path = '', basename = '', customRoutes = {}, entryPagePath 
     const alias = ((_a = Object.entries(customRoutes).find(([key]) => key === routePath)) === null || _a === void 0 ? void 0 : _a[1]) || routePath;
     return entryPagePath || (typeof alias === 'string' ? alias : alias[0]) || basename;
 };
-const getCurrentPage = (routerMode = 'hash', basename = '/') => {
+const getCurrentPage$1 = (routerMode = 'hash', basename = '/') => {
     const pagePath = routerMode === 'hash'
         ? taroLocationProvider.hash.slice(1).split('?')[0]
         : taroLocationProvider.pathname;
@@ -1462,7 +1497,7 @@ class TaroEventTarget {
             isCapture = Boolean(options.capture);
             isOnce = Boolean(options.once);
         }
-        "production" !== 'production' && warn(isCapture, 'Taro 暂未实现 event 的 capture 特性。');
+        "development" !== 'production' && warn(isCapture, 'Taro 暂未实现 event 的 capture 特性。');
         // 某些框架，如 PReact 有委托的机制，handler 始终是同一个函数
         // 这会导致多层停止冒泡失败：view -> view(handler.stop = false) -> view(handler.stop = true)
         // 这样解决：view -> view(handlerA.stop = false) -> view(handlerB.stop = false)
@@ -1502,7 +1537,7 @@ class TaroEventTarget {
             if (item === handler || item.oldHandler === handler)
                 return true;
         });
-        "production" !== 'production' && warn(index === -1, `事件: '${type}' 没有注册在 DOM 中，因此不会被移除。`);
+        "development" !== 'production' && warn(index === -1, `事件: '${type}' 没有注册在 DOM 中，因此不会被移除。`);
         if (index === -1) {
             return;
         }
@@ -2079,7 +2114,7 @@ function enqueueUpdate(obj) {
     }
 }
 function setStyle(newVal, styleKey) {
-    "production" !== 'production' && warn(isString(newVal) && newVal.length > PROPERTY_THRESHOLD, `Style 属性 ${styleKey} 的值数据量过大，可能会影响渲染性能，考虑使用 CSS 类或其它方案替代。`);
+    "development" !== 'production' && warn(isString(newVal) && newVal.length > PROPERTY_THRESHOLD, `Style 属性 ${styleKey} 的值数据量过大，可能会影响渲染性能，考虑使用 CSS 类或其它方案替代。`);
     const old = this[styleKey];
     if (old === newVal)
         return;
@@ -2346,7 +2381,7 @@ class TaroElement extends TaroNode {
         this.setAttribute(FOCUS, false);
     }
     setAttribute(qualifiedName, value) {
-        "production" !== 'production' && warn(isString(value) && value.length > PROPERTY_THRESHOLD, `元素 ${this.nodeName} 的 ${qualifiedName} 属性值数据量过大，可能会影响渲染性能。考虑降低图片转为 base64 的阈值或在 CSS 中使用 base64。`);
+        "development" !== 'production' && warn(isString(value) && value.length > PROPERTY_THRESHOLD, `元素 ${this.nodeName} 的 ${qualifiedName} 属性值数据量过大，可能会影响渲染性能。考虑降低图片转为 base64 的阈值或在 CSS 中使用 base64。`);
         const isPureView = this.nodeName === VIEW && !isHasExtractProp(this) && !this.isAnyEventBinded();
         if (qualifiedName !== STYLE) {
             MutationObserver$1.record({
@@ -3880,7 +3915,7 @@ class TaroRootElement extends TaroElement {
             // custom-wrapper setData
             if (customWrapperCount) {
                 customWrapperMap.forEach((data, ctx) => {
-                    if ("production" !== 'production' && options.debug) {
+                    if ("development" !== 'production' && options.debug) {
                         // eslint-disable-next-line no-console
                         console.log('custom wrapper setData: ', data);
                     }
@@ -3889,7 +3924,7 @@ class TaroRootElement extends TaroElement {
             }
             // page setData
             if (isNeedNormalUpdate) {
-                if ("production" !== 'production' && options.debug) {
+                if ("development" !== 'production' && options.debug) {
                     // eslint-disable-next-line no-console
                     console.log('page setData:', normalUpdate);
                 }
@@ -4350,6 +4385,8 @@ function createPageConfig(component, pageName, data, pageConfig) {
                 this.$taroParams = uniqueOptions;
             }
             setCurrentRouter(this);
+            // 鸿蒙ASCF小程序特殊处理，完成 _taroInstance 初始化绑定
+            getCurrentInstance();
             // 初始化当前页面的上下文信息
             if ("harmony" !== 'web') {
                 taroWindowProvider.trigger(CONTEXT_ACTIONS.INIT, $taroPath);
@@ -5434,5 +5471,5 @@ if ("disabled" !== 'disabled' && "harmony" !== 'web') {
     handlePolyfill();
 }
 
-export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver$1 as MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, ShadowRoot, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroDocument, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams, VALUE, VIEW, addLeadingSlash, bumpNearestCtxEpochForRoot, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventHandlerTTDom, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage, getHomePage, getNearestCtx, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isNearestCtxEnv, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, setInnerHTML, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
+export { A, APP, BEHAVIORS, BODY, CATCHMOVE, CATCH_VIEW, CHANGE, CLASS, CLICK_VIEW, COMMENT, COMPILE_MODE, CONFIRM, CONTAINER, CONTEXT_ACTIONS, CURRENT_TARGET, CUSTOM_WRAPPER, Current, DATASET, DATE, DOCUMENT_ELEMENT_NAME, DOCUMENT_FRAGMENT, EVENT_CALLBACK_RESULT, EXTERNAL_CLASSES, FOCUS, FormElement, HEAD, HOOKS_APP_ID, HTML, History, ID, INPUT, KEY_CODE, Location, MutationObserver$1 as MutationObserver, OBJECT, ON_HIDE, ON_LOAD, ON_READY, ON_SHOW, OPTIONS, PAGE_INIT, PROPERTY_THRESHOLD, PROPS, PURE_VIEW, ROOT_STR, SET_DATA, SET_TIMEOUT, STATIC_VIEW, STYLE, SVGElement, ShadowRoot, Style, TARGET, TARO_RUNTIME, TIME_STAMP, TOUCHMOVE, TYPE, TaroDocument, TaroElement, TaroEvent, TaroNode, TaroRootElement, TaroText, UID, TaroURLProvider as URL, URLSearchParams, VALUE, VIEW, addLeadingSlash, bumpNearestCtxEpochForRoot, _caf as cancelAnimationFrame, convertNumber2PX, createComponentConfig, createEvent, createPageConfig, createRecursiveComponentConfig, customWrapperCache, debounce, taroDocumentProvider as document, env, eventCenter, eventHandler, eventHandlerTTDom, eventSource, extend, getComponentsAlias, taroGetComputedStyleProvider as getComputedStyle, getCurrentInstance, getCurrentPage$1 as getCurrentPage, getHomePage, getNearestCtx, getOnHideEventKey, getOnReadyEventKey, getOnShowEventKey, getPageInstance, getPath, handlePolyfill, hasBasename, taroHistoryProvider as history, hydrate, incrementId, injectPageInstance, isComment, isElement, isHasExtractProp, isNearestCtxEnv, isParentBound, isText, taroLocationProvider as location, nav as navigator, nextTick, now, options, parseUrl, perf, removePageInstance, _raf as requestAnimationFrame, safeExecute, setInnerHTML, shortcutAttr, stringify, stripBasename, stripSuffix, stripTrailing, throttle, taroWindowProvider as window };
 //# sourceMappingURL=runtime.esm.js.map
