@@ -1,6 +1,6 @@
 'use strict';
 
-if ("development" === 'production') {
+if ("production" === 'production') {
   module.exports = require('./cjs/react-jsx-runtime.production.min.js');
 } else {
   module.exports = require('./cjs/react-jsx-runtime.development.js');
