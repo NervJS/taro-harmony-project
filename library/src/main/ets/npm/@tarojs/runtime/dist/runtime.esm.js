@@ -174,7 +174,7 @@ let MutationObserver$1 = class MutationObserver {
             this.core = new MutationObserverImpl(callback);
         }
         else {
-            if ("development" !== 'production') {
+            if ("production" !== 'production') {
                 console.warn('[Taro Warning] 若要使用 MutationObserver，请在 Taro 编译配置中设置 \'mini.runtime.enableMutationObserver: true\'');
             }
             this.core = {
@@ -479,7 +479,7 @@ const URLSearchParams = "harmony" === 'web' ? env.window.URLSearchParams : (_a =
                         }
                     }
                     catch (err) {
-                        if ("development" !== 'production') {
+                        if ("production" !== 'production') {
                             console.warn(`[Taro warn] URL 参数 ${value} decode 异常`);
                         }
                     }
@@ -1039,16 +1039,14 @@ let lastTime = 0;
 const _hasNativeRaf = "harmony" === 'web' &&
     typeof requestAnimationFrame !== 'undefined' &&
     typeof cancelAnimationFrame !== 'undefined';
-// Keep this check inline so Webpack prunes native globals before ProvidePlugin
-// can inject an import of this module's own RAF exports on non-web platforms.
-const _raf = "harmony" === 'web' && _hasNativeRaf
+const _raf = _hasNativeRaf
     ? requestAnimationFrame
     : function (callback) {
         const _now = now();
         const nextTime = Math.max(lastTime + 16, _now); // First time will execute it immediately but barely noticeable and performance is gained.
         return setTimeout(function () { callback(lastTime = nextTime); }, nextTime - _now);
     };
-const _caf = "harmony" === 'web' && _hasNativeRaf
+const _caf = _hasNativeRaf
     ? cancelAnimationFrame
     : function (seed) {
         // fix https://github.com/NervJS/taro/issues/7749
@@ -1075,7 +1073,7 @@ class TaroWindow extends Events {
                     this[property] = globalThis[property];
                 }
                 catch (e) {
-                    if ("development" !== 'production') {
+                    if ("production" !== 'production') {
                         console.warn(`[Taro warn] window.${String(property)} 在赋值到 window 时报错`);
                     }
                 }
@@ -1499,7 +1497,7 @@ class TaroEventTarget {
             isCapture = Boolean(options.capture);
             isOnce = Boolean(options.once);
         }
-        "development" !== 'production' && warn(isCapture, 'Taro 暂未实现 event 的 capture 特性。');
+        "production" !== 'production' && warn(isCapture, 'Taro 暂未实现 event 的 capture 特性。');
         // 某些框架，如 PReact 有委托的机制，handler 始终是同一个函数
         // 这会导致多层停止冒泡失败：view -> view(handler.stop = false) -> view(handler.stop = true)
         // 这样解决：view -> view(handlerA.stop = false) -> view(handlerB.stop = false)
@@ -1539,7 +1537,7 @@ class TaroEventTarget {
             if (item === handler || item.oldHandler === handler)
                 return true;
         });
-        "development" !== 'production' && warn(index === -1, `事件: '${type}' 没有注册在 DOM 中，因此不会被移除。`);
+        "production" !== 'production' && warn(index === -1, `事件: '${type}' 没有注册在 DOM 中，因此不会被移除。`);
         if (index === -1) {
             return;
         }
@@ -1557,8 +1555,6 @@ class TaroEventTarget {
     }
 }
 
-// Tokens identify roots without keeping a moved node's previous root alive.
-const nearestCtxRootTokens = new WeakMap();
 const nearestCtxCache = new WeakMap();
 function isNearestCtxEnv() {
     return "harmony_cpp" === 'weapp' || "harmony_cpp" === 'jd';
@@ -1571,17 +1567,12 @@ function getNearestCtx(node) {
     if (root == null) {
         return null;
     }
-    let rootToken = nearestCtxRootTokens.get(root);
-    if (rootToken === undefined) {
-        rootToken = {};
-        nearestCtxRootTokens.set(root, rootToken);
-    }
     const cached = nearestCtxCache.get(node);
-    if (cached && cached.rootToken === rootToken && cached.nearestCtxEpoch === root.nearestCtxEpoch) {
+    if (cached && cached.nearestCtxEpoch === root.nearestCtxEpoch) {
         return cached.value;
     }
     const value = resolveNearestCtxValue(node, root);
-    nearestCtxCache.set(node, { value, rootToken, nearestCtxEpoch: root.nearestCtxEpoch });
+    nearestCtxCache.set(node, { value, nearestCtxEpoch: root.nearestCtxEpoch });
     return value;
 }
 function resolveNearestCtxValue(node, root) {
@@ -2123,7 +2114,7 @@ function enqueueUpdate(obj) {
     }
 }
 function setStyle(newVal, styleKey) {
-    "development" !== 'production' && warn(isString(newVal) && newVal.length > PROPERTY_THRESHOLD, `Style 属性 ${styleKey} 的值数据量过大，可能会影响渲染性能，考虑使用 CSS 类或其它方案替代。`);
+    "production" !== 'production' && warn(isString(newVal) && newVal.length > PROPERTY_THRESHOLD, `Style 属性 ${styleKey} 的值数据量过大，可能会影响渲染性能，考虑使用 CSS 类或其它方案替代。`);
     const old = this[styleKey];
     if (old === newVal)
         return;
@@ -2390,7 +2381,7 @@ class TaroElement extends TaroNode {
         this.setAttribute(FOCUS, false);
     }
     setAttribute(qualifiedName, value) {
-        "development" !== 'production' && warn(isString(value) && value.length > PROPERTY_THRESHOLD, `元素 ${this.nodeName} 的 ${qualifiedName} 属性值数据量过大，可能会影响渲染性能。考虑降低图片转为 base64 的阈值或在 CSS 中使用 base64。`);
+        "production" !== 'production' && warn(isString(value) && value.length > PROPERTY_THRESHOLD, `元素 ${this.nodeName} 的 ${qualifiedName} 属性值数据量过大，可能会影响渲染性能。考虑降低图片转为 base64 的阈值或在 CSS 中使用 base64。`);
         const isPureView = this.nodeName === VIEW && !isHasExtractProp(this) && !this.isAnyEventBinded();
         if (qualifiedName !== STYLE) {
             MutationObserver$1.record({
@@ -3528,25 +3519,6 @@ function contains(node) {
     return false;
 }
 
-hooks.tap('getNativeScope', scope => {
-    if ("harmony_cpp" !== 'weapp' || !(scope instanceof TaroNode))
-        return scope;
-    // A not-yet-attached native wrapper must not fall back to its page scope.
-    let current = scope;
-    while (current) {
-        if (current.ctx != null)
-            break;
-        if (current.nodeName === CUSTOM_WRAPPER) {
-            throw new Error('Native scope is not ready: the custom-wrapper is not attached.');
-        }
-        current = current.parentNode;
-    }
-    const ctx = scope._scope;
-    if (ctx == null) {
-        throw new Error('Native scope is unavailable: the Taro node must be mounted with a native context.');
-    }
-    return ctx;
-});
 if ("harmony" !== PLATFORM_TYPE.WEB && "harmony" !== PLATFORM_TYPE.HARMONY) {
     if (ENABLE_INNER_HTML) {
         TaroNode.extend('innerHTML', {
@@ -3943,7 +3915,7 @@ class TaroRootElement extends TaroElement {
             // custom-wrapper setData
             if (customWrapperCount) {
                 customWrapperMap.forEach((data, ctx) => {
-                    if ("development" !== 'production' && options.debug) {
+                    if ("production" !== 'production' && options.debug) {
                         // eslint-disable-next-line no-console
                         console.log('custom wrapper setData: ', data);
                     }
@@ -3952,7 +3924,7 @@ class TaroRootElement extends TaroElement {
             }
             // page setData
             if (isNeedNormalUpdate) {
-                if ("development" !== 'production' && options.debug) {
+                if ("production" !== 'production' && options.debug) {
                     // eslint-disable-next-line no-console
                     console.log('page setData:', normalUpdate);
                 }
@@ -4600,7 +4572,6 @@ function createComponentConfig(component, componentName, data) {
                 safeExecute(path, ON_LOAD);
                 if ("harmony" !== 'web') {
                     componentElement.ctx = this;
-                    bumpNearestCtxEpochForRoot(componentElement);
                     if ("harmony_cpp" !== 'tt' || !isEnableTTDom()) {
                         componentElement.performUpdate(true);
                     }
@@ -4613,7 +4584,6 @@ function createComponentConfig(component, componentName, data) {
                 instances.delete(path);
                 if (componentElement) {
                     componentElement.ctx = null;
-                    bumpNearestCtxEpochForRoot(componentElement);
                 }
             });
         },

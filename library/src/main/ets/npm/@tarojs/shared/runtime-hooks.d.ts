@@ -69,8 +69,6 @@ export declare class TaroHooks<T extends Record<string, TFunc> = any> extends Ev
     isExist(hookName: string): boolean;
 }
 type ITaroHooks = {
-    /** Resolve a native component scope without introducing a shared -> runtime dependency. */
-    getNativeScope: (scope: unknown) => unknown;
     /** 小程序端 App、Page 构造对象的生命周期方法名称 */
     getMiniLifecycle: (defaultConfig: MiniLifecycle) => MiniLifecycle;
     getMiniLifecycleImpl: () => MiniLifecycle;
