@@ -10,7 +10,7 @@
 
 'use strict';
 
-if ("production" !== "production") {
+if ("development" !== "production") {
   (function() {
 'use strict';
 
