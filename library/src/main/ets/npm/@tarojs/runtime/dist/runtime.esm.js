@@ -1035,41 +1035,25 @@ let lastTime = 0;
 // https://gist.github.com/paulirish/1579671
 // https://gist.github.com/jalbam/5fe05443270fa6d8136238ec72accbc0
 // Same Node config-load hazard as env.ts: these identifiers throw when absent.
-// Keep the platform check inline (like env.ts) so webpack can statically prune the
-// `web` branch in mini builds. If the branch survives, ProvidePlugin rewrites the bare
-// `requestAnimationFrame` identifier to an import of `@tarojs/runtime`, whose entry
-// re-exports `raf` from this module — a self-referential cycle that hits TDZ
-// ("Cannot access 'c' before initialization") when the runtime boots.
-const _fallbackRaf = function (callback) {
-    const _now = now();
-    const nextTime = Math.max(lastTime + 16, _now); // First time will execute it immediately but barely noticeable and performance is gained.
-    return setTimeout(function () { callback(lastTime = nextTime); }, nextTime - _now);
-};
-const _fallbackCaf = function (seed) {
-    // fix https://github.com/NervJS/taro/issues/7749
-    clearTimeout(seed);
-};
-// NOTE: keep `"harmony" === 'web'` as the outermost, statically
-// evaluable condition (same shape as env.ts). In mini builds webpack prunes the
-// whole `web` branch, so the bare `requestAnimationFrame` / `cancelAnimationFrame`
-// identifiers — including inside the typeof checks below — are never walked by
-// ProvidePlugin. If they are, ProvidePlugin rewrites them to imports of
-// `@tarojs/runtime`, whose entry re-exports `raf` from this very module — a
-// self-referential cycle that triggers TDZ ("Cannot access 'c' before initialization").
-// Both-exist semantics: use native raf/caf only when the pair is available,
-// otherwise fall back to timers so caf(raf(cb)) stays consistent.
-const _raf = "harmony" === 'web'
-    ? (typeof requestAnimationFrame !== 'undefined' &&
-        typeof cancelAnimationFrame !== 'undefined'
-        ? requestAnimationFrame
-        : _fallbackRaf)
-    : _fallbackRaf;
-const _caf = "harmony" === 'web'
-    ? (typeof requestAnimationFrame !== 'undefined' &&
-        typeof cancelAnimationFrame !== 'undefined'
-        ? cancelAnimationFrame
-        : _fallbackCaf)
-    : _fallbackCaf;
+// Use native implementations only when BOTH exist to ensure raf/caf use matching APIs.
+const _hasNativeRaf = "harmony" === 'web' &&
+    typeof requestAnimationFrame !== 'undefined' &&
+    typeof cancelAnimationFrame !== 'undefined';
+// Keep this check inline so Webpack prunes native globals before ProvidePlugin
+// can inject an import of this module's own RAF exports on non-web platforms.
+const _raf = "harmony" === 'web' && _hasNativeRaf
+    ? requestAnimationFrame
+    : function (callback) {
+        const _now = now();
+        const nextTime = Math.max(lastTime + 16, _now); // First time will execute it immediately but barely noticeable and performance is gained.
+        return setTimeout(function () { callback(lastTime = nextTime); }, nextTime - _now);
+    };
+const _caf = "harmony" === 'web' && _hasNativeRaf
+    ? cancelAnimationFrame
+    : function (seed) {
+        // fix https://github.com/NervJS/taro/issues/7749
+        clearTimeout(seed);
+    };
 
 class TaroWindow extends Events {
     constructor() {
@@ -1573,6 +1557,8 @@ class TaroEventTarget {
     }
 }
 
+// Tokens identify roots without keeping a moved node's previous root alive.
+const nearestCtxRootTokens = new WeakMap();
 const nearestCtxCache = new WeakMap();
 function isNearestCtxEnv() {
     return "harmony_cpp" === 'weapp' || "harmony_cpp" === 'jd';
@@ -1585,12 +1571,17 @@ function getNearestCtx(node) {
     if (root == null) {
         return null;
     }
+    let rootToken = nearestCtxRootTokens.get(root);
+    if (rootToken === undefined) {
+        rootToken = {};
+        nearestCtxRootTokens.set(root, rootToken);
+    }
     const cached = nearestCtxCache.get(node);
-    if (cached && cached.nearestCtxEpoch === root.nearestCtxEpoch) {
+    if (cached && cached.rootToken === rootToken && cached.nearestCtxEpoch === root.nearestCtxEpoch) {
         return cached.value;
     }
     const value = resolveNearestCtxValue(node, root);
-    nearestCtxCache.set(node, { value, nearestCtxEpoch: root.nearestCtxEpoch });
+    nearestCtxCache.set(node, { value, rootToken, nearestCtxEpoch: root.nearestCtxEpoch });
     return value;
 }
 function resolveNearestCtxValue(node, root) {
@@ -3537,6 +3528,25 @@ function contains(node) {
     return false;
 }
 
+hooks.tap('getNativeScope', scope => {
+    if ("harmony_cpp" !== 'weapp' || !(scope instanceof TaroNode))
+        return scope;
+    // A not-yet-attached native wrapper must not fall back to its page scope.
+    let current = scope;
+    while (current) {
+        if (current.ctx != null)
+            break;
+        if (current.nodeName === CUSTOM_WRAPPER) {
+            throw new Error('Native scope is not ready: the custom-wrapper is not attached.');
+        }
+        current = current.parentNode;
+    }
+    const ctx = scope._scope;
+    if (ctx == null) {
+        throw new Error('Native scope is unavailable: the Taro node must be mounted with a native context.');
+    }
+    return ctx;
+});
 if ("harmony" !== PLATFORM_TYPE.WEB && "harmony" !== PLATFORM_TYPE.HARMONY) {
     if (ENABLE_INNER_HTML) {
         TaroNode.extend('innerHTML', {
@@ -4590,6 +4600,7 @@ function createComponentConfig(component, componentName, data) {
                 safeExecute(path, ON_LOAD);
                 if ("harmony" !== 'web') {
                     componentElement.ctx = this;
+                    bumpNearestCtxEpochForRoot(componentElement);
                     if ("harmony_cpp" !== 'tt' || !isEnableTTDom()) {
                         componentElement.performUpdate(true);
                     }
@@ -4602,6 +4613,7 @@ function createComponentConfig(component, componentName, data) {
                 instances.delete(path);
                 if (componentElement) {
                     componentElement.ctx = null;
+                    bumpNearestCtxEpochForRoot(componentElement);
                 }
             });
         },

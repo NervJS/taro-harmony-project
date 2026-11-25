@@ -278,6 +278,15 @@ declare module './index' {
     iconPath?: string
     /** 选中时的图片路径，icon 大小限制为 40kb，建议尺寸为 81px * 81px ，当 position 为 top 时，此参数无效 */
     selectedIconPath?: string
+    /** tab 上按钮文字的多语言文案，键为语言标识，如 `zh_CN`、`zh_TW`、`zh_HK`、`en_US`、`ja_JP`
+     *
+     * 仅支付宝系小程序（如钉钉小程序）支持，编译时原样输出到 `tabBar.items[].name_locale`
+     * @example
+     * ```js
+     * { pagePath: 'pages/index/index', text: '首页', name_locale: { zh_CN: '首页', en_US: 'Home' } }
+     * ```
+     */
+    name_locale?: Record<string, string>
   }
 
   interface TabBar {
@@ -338,49 +347,35 @@ declare module './index' {
     plugins?: Plugins
   }
 
-  /** 匹配 sourceRoot 相对源码模块路径的谓词 */
-  type AsyncResourcePredicate = (resource: string) => boolean
-
-  /** 源码模块匹配条件，类比 webpack module.rules 的 test/include/exclude */
-  type AsyncResourceCondition = string | RegExp | AsyncResourcePredicate | Array<string | RegExp | AsyncResourcePredicate>
-
-  /** 顶层异步分包规则：匹配源码模块并指定其动态 import 产物的输出目录 */
-  interface AsyncSubPackageRule {
-    /**
-     * 匹配源码模块。
-     * resource 为相对于 sourceDir 的路径，分隔符统一为 /。
-     */
-    test: AsyncResourceCondition
-    /** 可选：进一步限定匹配范围。 */
-    include?: AsyncResourceCondition
-    /** 可选：命中即排除当前规则。 */
-    exclude?: AsyncResourceCondition
-    /**
-     * 异步子包根路径（相对于 outputRoot）。
-     * 字符串表示固定目标；数组表示有序候选目标，由 maxSize 预算分配算法选择。
-     */
-    root: string | string[]
-    /** 多条规则命中时较大的优先，默认 0。 */
-    priority?: number
-    /**
-     * 每个物理目标的字节预算；归一化后存在多个不同 root 时必填。
-     * 口径为 chunk 内模块的未压缩体积估算，不等于最终完整包体积。
-     */
-    maxSize?: number
-  }
-
   /** 子分包独立模板 root 配置项，可以是路径字符串或包含额外选项的对象 */
   type SubPackageIndieRootConfig = string | {
     /** 分包根路径（相对于 sourceDir） */
     path: string
-    /** 是否禁用递归组件（comp/custom-wrapper/recursive-component）的生成。 */
+    /**
+     * 是否禁用递归组件（comp/custom-wrapper/recursive-component）的生成。
+     * 设为 true 时，该 root 下不会生成 comp.*、custom-wrapper.*、recursive-component.js，
+     * base.wxml 最后一层的 container template 也不会引用 <comp>，超出 baseLevel 的节点将被静默截断。
+     * @default false
+     */
     disableRecursiveComponent?: boolean
     /**
-     * 兼容配置，继续支持 main 已有的 source root 异步归属语义。
-     * 已有项目无需迁移；文件级归属需求可使用顶层 asyncSubPackages。
+     * 异步分包配置。配置 asyncRoot 后启用。
+     * 启用后，该 root 中通过 `import()` 动态引入的模块会由 webpack 原生异步 chunk 处理，
+     * 并单独打包到指定的异步子包。
+     *
+     * 限制：
+     * - asyncRoot 下注册的页面是占位 `<view />`，不会注入 `usingComponents`。
+     *   因此 asyncRoot 包含自定义组件 chunk 时，自定义组件应放在 sourceRoot 的页面里使用，
+     *   而非由占位页面直接消费。
+     * - 与 `lazyCodeLoading: 'requiredComponents'` 兼容。
+     * @see https://developers.weixin.qq.com/miniprogram/dev/framework/subpackages/async.html
+     * @since 4.1.12
      */
     asyncSubPackage?: {
-      /** 异步子包根路径（相对于 sourceDir）。多个 root 可以配置相同的 target。 */
+      /**
+       * 异步子包根路径（相对于 sourceDir），必填。
+       * 多个 root 配置相同的 asyncRoot 时，它们的动态 import 产物会合并到同一个异步子包。
+       */
       asyncRoot: string
     }
   }
@@ -549,17 +544,6 @@ declare module './index' {
      * @since 4.1.x
      */
     subPackageIndie?: SubPackageIndieConfig[]
-    /** 微信小程序异步分包规则（用于 newBlended 模式），按源码模块指定动态 import 产物目录；其他平台会忽略该配置
-     * @example
-     * ```js
-     * asyncSubPackages: [
-     *   { test: 'components/heavy-content/index', root: 'async/heavy' },
-     *   { test: /^components\/reports\//, root: ['async/reports', 'async/reports-2'], maxSize: 1500000 },
-     * ]
-     * ```
-     * @since 4.3.x
-     */
-    asyncSubPackages?: AsyncSubPackageRule[]
     /** Worker 代码放置的目录
      * 使用 Worker 处理多线程任务时，设置 Worker 代码放置的目录
      * @since 1.9.90

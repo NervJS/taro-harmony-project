@@ -602,6 +602,7 @@ class TaroHooks extends Events {
     }
 }
 new TaroHooks({
+    getNativeScope: TaroHook(HOOK_TYPE.SINGLE, scope => scope),
     getMiniLifecycle: TaroHook(HOOK_TYPE.SINGLE, defaultConfig => defaultConfig),
     getMiniLifecycleImpl: TaroHook(HOOK_TYPE.SINGLE, function () {
         return this.call('getMiniLifecycle', defaultMiniLifecycle);
